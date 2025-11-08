@@ -446,7 +446,7 @@ const styles = StyleSheet.create({
   assistantMessage: {
     backgroundColor: '#1a1a2e',
     alignSelf: 'flex-start',
-    maxWidth: '90%',
+    maxWidth: '96%',
   },
   messageHeader: {
     flexDirection: 'row',
