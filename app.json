@@ -3,6 +3,7 @@
     "name": "IDEphone",
     "slug": "IDEphone",
     "version": "1.0.0",
+    "scheme": "idephone",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
