@@ -175,7 +175,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ onFileSelect }) => {
       />
 
       {/* New File Modal */}
-      <Modal visible={showNewFileModal} transparent animationType="fade">
+      <Modal visible={showNewFileModal} transparent={true} animationType="fade">
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>New File</Text>
@@ -184,7 +184,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ onFileSelect }) => {
               placeholder="File name"
               value={newItemName}
               onChangeText={setNewItemName}
-              autoFocus
+              autoFocus={true}
             />
             <View style={styles.modalButtons}>
               <TouchableOpacity
@@ -208,7 +208,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ onFileSelect }) => {
       </Modal>
 
       {/* New Folder Modal */}
-      <Modal visible={showNewFolderModal} transparent animationType="fade">
+      <Modal visible={showNewFolderModal} transparent={true} animationType="fade">
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>New Folder</Text>
@@ -217,7 +217,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ onFileSelect }) => {
               placeholder="Folder name"
               value={newItemName}
               onChangeText={setNewItemName}
-              autoFocus
+              autoFocus={true}
             />
             <View style={styles.modalButtons}>
               <TouchableOpacity

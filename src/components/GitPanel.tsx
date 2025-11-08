@@ -293,7 +293,7 @@ export const GitPanel: React.FC = () => {
       </View>
 
       {/* Commit Modal */}
-      <Modal visible={showCommitModal} transparent animationType="fade">
+      <Modal visible={showCommitModal} transparent={true} animationType="fade">
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Commit Changes</Text>
@@ -328,7 +328,7 @@ export const GitPanel: React.FC = () => {
       </Modal>
 
       {/* Clone Modal */}
-      <Modal visible={showCloneModal} transparent animationType="fade">
+      <Modal visible={showCloneModal} transparent={true} animationType="fade">
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Clone Repository</Text>

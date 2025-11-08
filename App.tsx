@@ -57,7 +57,7 @@ export default function App() {
             />
           </Stack.Navigator>
         </NavigationContainer>
-        <StatusBar style="light" />
+        <StatusBar style="auto" />
       </EditorProvider>
     </SafeAreaProvider>
   );

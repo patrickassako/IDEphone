@@ -208,7 +208,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
       </View>
 
       {/* New Project Modal */}
-      <Modal visible={showNewProjectModal} transparent animationType="fade">
+      <Modal visible={showNewProjectModal} transparent={true} animationType="fade">
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>New Project</Text>
@@ -242,7 +242,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
       </Modal>
 
       {/* Clone Modal */}
-      <Modal visible={showCloneModal} transparent animationType="fade">
+      <Modal visible={showCloneModal} transparent={true} animationType="fade">
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Clone Repository</Text>

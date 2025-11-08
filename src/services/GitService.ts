@@ -1,5 +1,5 @@
 import git from 'isomorphic-git';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { GitStatus, GitConfig } from '../types';
 
 // Custom FS implementation for isomorphic-git using expo-file-system
