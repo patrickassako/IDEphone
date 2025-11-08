@@ -1,6 +1,6 @@
 /**
  * AI Assistant Drawer Component
- * Bottom drawer with AI chat and quick actions
+ * Modern bottom sheet with AI chat and quick actions
  */
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -16,11 +16,15 @@ import {
   ActivityIndicator,
   Modal,
   Animated,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AIService, AIContext, AIMessage, EditorReference } from '../services/ai';
 import { AIContextBuilder } from '../services/ai/AIContextBuilder';
 import { AIActionExecutor } from '../services/ai/AIActionExecutor';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const DRAWER_HEIGHT = SCREEN_HEIGHT * 0.92;
 
 interface AIAssistantDrawerProps {
   visible: boolean;
@@ -54,22 +58,23 @@ export const AIAssistantDrawer: React.FC<AIAssistantDrawerProps> = ({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [slideAnim] = useState(new Animated.Value(0));
+  const [slideAnim] = useState(new Animated.Value(DRAWER_HEIGHT));
   const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     if (visible) {
       Animated.spring(slideAnim, {
-        toValue: 1,
+        toValue: 0,
         useNativeDriver: true,
         tension: 50,
         friction: 8,
       }).start();
     } else {
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 200,
+      Animated.spring(slideAnim, {
+        toValue: DRAWER_HEIGHT,
         useNativeDriver: true,
+        tension: 50,
+        friction: 8,
       }).start();
     }
   }, [visible]);
@@ -178,29 +183,41 @@ export const AIAssistantDrawer: React.FC<AIAssistantDrawerProps> = ({
     }
   };
 
-  const translateY = slideAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [600, 0],
-  });
-
   if (!visible) return null;
 
   return (
-    <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
+    <Modal transparent visible={visible} animationType="none" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
         <Animated.View
-          style={[styles.drawer, { transform: [{ translateY }] }]}
+          style={[
+            styles.drawer,
+            {
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
         >
+          {/* Drag Handle */}
+          <View style={styles.dragHandleContainer}>
+            <View style={styles.dragHandle} />
+          </View>
+
+          {/* Header */}
           <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <Ionicons name="sparkles" size={20} color="#4A90E2" />
-              <Text style={styles.headerTitle}>AI Assistant</Text>
-              {fileName && <Text style={styles.headerSubtitle}>{fileName}</Text>}
+            <View style={styles.headerContent}>
+              <View style={styles.headerLeft}>
+                <View style={styles.iconContainer}>
+                  <Ionicons name="sparkles" size={24} color="#9F7AEA" />
+                </View>
+                <View>
+                  <Text style={styles.headerTitle}>AI Assistant</Text>
+                  {fileName && <Text style={styles.headerSubtitle}>{fileName}</Text>}
+                </View>
+              </View>
+              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                <Ionicons name="close" size={24} color="#AAA" />
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color="#FFF" />
-            </TouchableOpacity>
           </View>
 
           {/* Quick Actions */}
@@ -340,208 +357,267 @@ export const AIAssistantDrawer: React.FC<AIAssistantDrawerProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
   },
   backdrop: {
-    flex: 1,
-  },
-  drawer: {
     position: 'absolute',
-    bottom: 0,
+    top: 0,
     left: 0,
     right: 0,
-    height: '70%',
-    backgroundColor: '#1E1E1E',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  },
+  drawer: {
+    backgroundColor: '#1A1A1A',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    height: DRAWER_HEIGHT,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 20,
+  },
+  dragHandleContainer: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  dragHandle: {
+    width: 40,
+    height: 5,
+    backgroundColor: '#444',
+    borderRadius: 3,
   },
   header: {
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2D2D2D',
+  },
+  headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#333',
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
     flex: 1,
+  },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#2D2D2D',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
     color: '#FFF',
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    marginLeft: 8,
   },
   headerSubtitle: {
     color: '#AAA',
-    fontSize: 12,
-    marginLeft: 8,
+    fontSize: 14,
+    marginTop: 2,
   },
   closeButton: {
-    padding: 4,
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#2D2D2D',
   },
   quickActions: {
     flexDirection: 'row',
-    padding: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    gap: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: '#2D2D2D',
   },
   quickActionButton: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2D2D2D',
-    padding: 8,
-    borderRadius: 8,
-    marginHorizontal: 4,
+    backgroundColor: '#252525',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#333',
   },
   quickActionText: {
     color: '#4A90E2',
     fontSize: 12,
-    marginLeft: 4,
+    marginTop: 6,
     fontWeight: '600',
   },
   chatContainer: {
     flex: 1,
   },
   chatContent: {
-    padding: 12,
-    paddingBottom: 8,
+    padding: 20,
+    paddingBottom: 12,
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40,
+    paddingVertical: 60,
   },
   emptyStateText: {
     color: '#AAA',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
-    marginTop: 16,
+    marginTop: 20,
   },
   emptyStateSubtext: {
     color: '#666',
-    fontSize: 14,
-    marginTop: 8,
+    fontSize: 15,
+    marginTop: 10,
     textAlign: 'center',
+    lineHeight: 22,
+    paddingHorizontal: 20,
   },
   messageContainer: {
-    marginBottom: 12,
-    padding: 12,
-    borderRadius: 8,
+    marginBottom: 20,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
   },
   userMessage: {
-    backgroundColor: '#2D2D2D',
+    backgroundColor: '#252525',
+    borderColor: '#4A90E2',
     alignSelf: 'flex-end',
     maxWidth: '85%',
   },
   assistantMessage: {
-    backgroundColor: '#1a1a2e',
-    alignSelf: 'flex-start',
-    maxWidth: '96%',
+    backgroundColor: '#1E1E2E',
+    borderColor: '#9F7AEA',
+    width: '100%',
   },
   messageHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   messageRole: {
     color: '#AAA',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: 'bold',
-    marginLeft: 6,
+    marginLeft: 8,
   },
   messageContent: {
     color: '#FFF',
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 16,
+    lineHeight: 26,
+    letterSpacing: 0.2,
   },
   codeBlockContainer: {
-    marginTop: 12,
+    marginTop: 16,
     backgroundColor: '#0D1117',
-    borderRadius: 6,
+    borderRadius: 12,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#333',
+    borderWidth: 2,
+    borderColor: '#2D2D2D',
   },
   codeBlockHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: '#161B22',
+    borderBottomWidth: 1,
+    borderBottomColor: '#2D2D2D',
   },
   codeBlockLanguage: {
-    color: '#AAA',
-    fontSize: 12,
+    color: '#9F7AEA',
+    fontSize: 13,
     fontWeight: 'bold',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   applyButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    backgroundColor: '#2D2D2D',
-    borderRadius: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#252525',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#4A90E2',
   },
   applyButtonText: {
     color: '#4A90E2',
-    fontSize: 12,
-    marginLeft: 4,
+    fontSize: 13,
+    marginLeft: 6,
     fontWeight: '600',
   },
   codeBlock: {
-    padding: 12,
+    padding: 16,
   },
   codeBlockText: {
     color: '#E6EDF3',
-    fontSize: 12,
+    fontSize: 14,
+    lineHeight: 22,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   loadingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    padding: 16,
+    backgroundColor: '#1E1E2E',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#9F7AEA',
+    marginBottom: 16,
   },
   loadingText: {
     color: '#AAA',
-    marginLeft: 8,
-    fontSize: 14,
+    marginLeft: 12,
+    fontSize: 15,
+    fontWeight: '600',
   },
   inputContainer: {
     flexDirection: 'row',
-    padding: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingBottom: 24,
     borderTopWidth: 1,
-    borderTopColor: '#333',
-    backgroundColor: '#1E1E1E',
+    borderTopColor: '#2D2D2D',
+    backgroundColor: '#1A1A1A',
+    gap: 12,
   },
   input: {
     flex: 1,
-    backgroundColor: '#2D2D2D',
+    backgroundColor: '#252525',
     color: '#FFF',
-    padding: 12,
-    borderRadius: 20,
-    fontSize: 14,
-    maxHeight: 100,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 16,
+    fontSize: 15,
+    lineHeight: 22,
+    maxHeight: 120,
+    borderWidth: 1,
+    borderColor: '#333',
   },
   sendButton: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     backgroundColor: '#4A90E2',
-    borderRadius: 22,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 8,
+    shadowColor: '#4A90E2',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   sendButtonDisabled: {
     opacity: 0.5,
+    shadowOpacity: 0,
   },
 });
