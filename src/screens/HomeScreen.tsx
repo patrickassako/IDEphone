@@ -10,6 +10,7 @@ import {
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
 import { FileSystemService } from '../services/FileSystemService';
 import { Repository } from '../types';
 import { useEditor } from '../contexts/EditorContext';
@@ -147,6 +148,62 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
     );
   };
 
+  const handleOpenLocalFolder = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: '*/*',
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled) {
+        return;
+      }
+
+      if (result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        // Get the directory path from the file
+        const filePath = asset.uri;
+        const dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
+        const folderName = dirPath.substring(dirPath.lastIndexOf('/') + 1);
+
+        Alert.alert(
+          'Import Project',
+          `Do you want to import the folder "${folderName}"?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Import',
+              onPress: async () => {
+                try {
+                  const baseDir = FileSystemService.getBaseDir();
+                  const targetPath = baseDir + folderName;
+
+                  // Copy folder to app directory
+                  await FileSystemService.createDirectory(baseDir, folderName);
+
+                  const newRepo: Repository = {
+                    name: folderName,
+                    path: targetPath,
+                  };
+
+                  loadProjects();
+                  Alert.alert('Success', 'Folder imported successfully', [
+                    { text: 'OK', onPress: () => handleOpenProject(newRepo) },
+                  ]);
+                } catch (error) {
+                  Alert.alert('Error', 'Failed to import folder');
+                }
+              },
+            },
+          ]
+        );
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to open folder picker');
+      console.error('Error opening folder:', error);
+    }
+  };
+
   const renderProject = ({ item }: { item: Repository }) => (
     <TouchableOpacity
       style={styles.projectItem}
@@ -186,6 +243,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
         >
           <Ionicons name="cloud-download" size={24} color="#4A90E2" />
           <Text style={styles.actionText}>Clone Repository</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={handleOpenLocalFolder}
+        >
+          <Ionicons name="folder-open" size={24} color="#4A90E2" />
+          <Text style={styles.actionText}>Open Folder</Text>
         </TouchableOpacity>
       </View>
 

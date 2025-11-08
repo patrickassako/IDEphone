@@ -49,9 +49,9 @@ const fs = {
         isFile: () => !info.isDirectory,
         isDirectory: () => info.isDirectory,
         isSymbolicLink: () => false,
-        size: info.size,
+        size: info.exists ? (info as any).size || 0 : 0,
         mode: 0o666,
-        mtimeMs: info.modificationTime,
+        mtimeMs: info.exists ? (info as any).modificationTime || 0 : 0,
       };
     },
 
@@ -96,10 +96,12 @@ export class GitService {
     try {
       await git.clone({
         fs,
+        http: require('isomorphic-git/http/web'),
         dir,
         url,
         depth: depth || 1,
         singleBranch: true,
+        corsProxy: 'https://cors.isomorphic-git.org',
       });
     } catch (error) {
       console.error('Error cloning repository:', error);
@@ -160,9 +162,11 @@ export class GitService {
     try {
       await git.push({
         fs,
+        http: require('isomorphic-git/http/web'),
         dir,
         remote,
         ref: branch,
+        corsProxy: 'https://cors.isomorphic-git.org',
       });
     } catch (error) {
       console.error('Error pushing:', error);
@@ -174,6 +178,7 @@ export class GitService {
     try {
       await git.pull({
         fs,
+        http: require('isomorphic-git/http/web'),
         dir,
         ref: branch,
         singleBranch: true,
@@ -181,6 +186,7 @@ export class GitService {
           name: this.config.name,
           email: this.config.email,
         },
+        corsProxy: 'https://cors.isomorphic-git.org',
       });
     } catch (error) {
       console.error('Error pulling:', error);
