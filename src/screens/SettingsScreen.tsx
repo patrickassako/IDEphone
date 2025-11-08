@@ -11,10 +11,14 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { GitService } from '../services/GitService';
+import { PreferencesService, EditorTheme } from '../services/PreferencesService';
 
 export const SettingsScreen: React.FC = () => {
   const navigation = useNavigation();
   const [githubToken, setGithubToken] = useState('');
+  const [selectedTheme, setSelectedTheme] = useState<EditorTheme>(
+    PreferencesService.getEditorTheme()
+  );
 
   const handleSaveGitHubToken = () => {
     if (!githubToken.trim()) {
@@ -30,6 +34,12 @@ export const SettingsScreen: React.FC = () => {
       'GitHub token saved. You can now clone private repositories.',
       [{ text: 'OK' }]
     );
+  };
+
+  const handleThemeChange = (theme: EditorTheme) => {
+    setSelectedTheme(theme);
+    PreferencesService.setEditorTheme(theme);
+    Alert.alert('Success', `Editor theme changed to ${theme}. Reopen files to see the change.`);
   };
 
   return (
@@ -68,9 +78,78 @@ export const SettingsScreen: React.FC = () => {
       </View>
 
       <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Editor Preferences</Text>
+        <Text style={styles.description}>
+          Choose your preferred editor theme (Monaco Editor)
+        </Text>
+        <Text style={styles.label}>Theme</Text>
+
+        <TouchableOpacity
+          style={[
+            styles.themeOption,
+            selectedTheme === 'vs-dark' && styles.themeOptionSelected,
+          ]}
+          onPress={() => handleThemeChange('vs-dark')}
+        >
+          <Ionicons
+            name={selectedTheme === 'vs-dark' ? 'radio-button-on' : 'radio-button-off'}
+            size={20}
+            color="#4A90E2"
+          />
+          <View style={styles.themeInfo}>
+            <Text style={styles.themeTitle}>Dark (VS Code)</Text>
+            <Text style={styles.themeDescription}>
+              Dark theme optimized for low-light environments
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.themeOption,
+            selectedTheme === 'vs-light' && styles.themeOptionSelected,
+          ]}
+          onPress={() => handleThemeChange('vs-light')}
+        >
+          <Ionicons
+            name={selectedTheme === 'vs-light' ? 'radio-button-on' : 'radio-button-off'}
+            size={20}
+            color="#4A90E2"
+          />
+          <View style={styles.themeInfo}>
+            <Text style={styles.themeTitle}>Light (VS Code)</Text>
+            <Text style={styles.themeDescription}>
+              Light theme for bright environments
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.themeOption,
+            selectedTheme === 'hc-black' && styles.themeOptionSelected,
+          ]}
+          onPress={() => handleThemeChange('hc-black')}
+        >
+          <Ionicons
+            name={selectedTheme === 'hc-black' ? 'radio-button-on' : 'radio-button-off'}
+            size={20}
+            color="#4A90E2"
+          />
+          <View style={styles.themeInfo}>
+            <Text style={styles.themeTitle}>High Contrast</Text>
+            <Text style={styles.themeDescription}>
+              High contrast theme for better visibility
+            </Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.section}>
         <Text style={styles.sectionTitle}>About</Text>
         <Text style={styles.aboutText}>IDEphone v1.0.0</Text>
-        <Text style={styles.aboutText}>Mobile Code Editor</Text>
+        <Text style={styles.aboutText}>Mobile Code Editor with Monaco</Text>
+        <Text style={styles.aboutText}>Powered by VS Code Editor</Text>
       </View>
     </ScrollView>
   );
@@ -145,5 +224,33 @@ const styles = StyleSheet.create({
     color: '#4A90E2',
     fontWeight: 'bold',
     marginLeft: 8,
+  },
+  themeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 5,
+    backgroundColor: '#2D2D2D',
+    marginBottom: 10,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  themeOptionSelected: {
+    borderColor: '#4A90E2',
+    backgroundColor: 'rgba(74, 144, 226, 0.1)',
+  },
+  themeInfo: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  themeTitle: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  themeDescription: {
+    color: '#AAA',
+    fontSize: 12,
   },
 });

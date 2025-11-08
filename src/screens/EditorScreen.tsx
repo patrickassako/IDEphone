@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { View, StyleSheet, Dimensions, TouchableOpacity, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FileBrowser } from '../components/FileBrowser';
-import { CodeEditor } from '../components/CodeEditor';
+import { MonacoEditor } from '../components/MonacoEditor';
 import { TabBar } from '../components/TabBar';
 import { GitPanel } from '../components/GitPanel';
 import { useEditor } from '../contexts/EditorContext';
 import { FileItem, TabItem } from '../types';
 import { FileSystemService } from '../services/FileSystemService';
+import { PreferencesService } from '../services/PreferencesService';
 
 const { width } = Dimensions.get('window');
 
@@ -145,11 +146,12 @@ export const EditorScreen: React.FC = () => {
             )}
 
             {activeTab ? (
-              <CodeEditor
+              <MonacoEditor
                 key={activeTab.id}
                 filePath={activeTab.path}
                 fileName={activeTab.name}
                 initialContent={activeTab.content}
+                language={activeTab.language || 'text'}
                 onContentChange={handleContentChange}
                 onSave={() => {
                   if (activeTabId) {
@@ -157,6 +159,7 @@ export const EditorScreen: React.FC = () => {
                   }
                 }}
                 readOnly={readOnlyMode}
+                theme={PreferencesService.getEditorTheme()}
               />
             ) : (
               <View style={styles.emptyState}>
