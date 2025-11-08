@@ -17,9 +17,10 @@ import { GitService } from '../services/GitService';
 
 interface HomeScreenProps {
   onProjectSelect: (repo: Repository) => void;
+  navigation?: any;
 }
 
-export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
+export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect, navigation }) => {
   const [projects, setProjects] = useState<Repository[]>([]);
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [showCloneModal, setShowCloneModal] = useState(false);
@@ -177,7 +178,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
           onPress={() => setShowNewProjectModal(true)}
         >
           <Ionicons name="add-circle" size={24} color="#4A90E2" />
-          <Text style={styles.actionText}>New Project</Text>
+          <Text style={styles.actionText}>Nouveau Projet</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -185,12 +186,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
           onPress={() => setShowCloneModal(true)}
         >
           <Ionicons name="cloud-download" size={24} color="#4A90E2" />
-          <Text style={styles.actionText}>Clone Repository</Text>
+          <Text style={styles.actionText}>Cloner Repository</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.projectsSection}>
-        <Text style={styles.sectionTitle}>Recent Projects</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Projets Récents</Text>
+        </View>
         {projects.length > 0 ? (
           <FlatList
             data={projects}
@@ -201,8 +204,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
         ) : (
           <View style={styles.emptyState}>
             <Ionicons name="folder-open-outline" size={64} color="#666" />
-            <Text style={styles.emptyText}>No projects yet</Text>
-            <Text style={styles.emptySubtext}>Create a new project or clone a repository to get started</Text>
+            <Text style={styles.emptyText}>Aucun projet</Text>
+            <Text style={styles.emptySubtext}>
+              Créez un nouveau projet, clonez un repository ou connectez-vous à GitHub
+            </Text>
           </View>
         )}
       </View>
@@ -211,10 +216,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
       <Modal visible={showNewProjectModal} transparent={true} animationType="fade">
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>New Project</Text>
+            <Text style={styles.modalTitle}>Nouveau Projet</Text>
             <TextInput
               style={styles.input}
-              placeholder="Project name"
+              placeholder="Nom du projet"
               placeholderTextColor="#666"
               value={projectName}
               onChangeText={setProjectName}
@@ -228,13 +233,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
                   setProjectName('');
                 }}
               >
-                <Text style={styles.buttonText}>Cancel</Text>
+                <Text style={styles.buttonText}>Annuler</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalButton, styles.createButton]}
                 onPress={handleCreateProject}
               >
-                <Text style={styles.buttonText}>Create</Text>
+                <Text style={styles.buttonText}>Créer</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -245,7 +250,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
       <Modal visible={showCloneModal} transparent={true} animationType="fade">
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Clone Repository</Text>
+            <Text style={styles.modalTitle}>Cloner Repository</Text>
             <TextInput
               style={styles.input}
               placeholder="Repository URL (https://...)"
@@ -264,13 +269,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
                   setCloneUrl('');
                 }}
               >
-                <Text style={styles.buttonText}>Cancel</Text>
+                <Text style={styles.buttonText}>Annuler</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalButton, styles.createButton]}
                 onPress={handleCloneProject}
               >
-                <Text style={styles.buttonText}>Clone</Text>
+                <Text style={styles.buttonText}>Cloner</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -319,11 +324,16 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#FFF',
-    marginBottom: 15,
   },
   projectList: {
     flex: 1,

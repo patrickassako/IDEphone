@@ -110,6 +110,15 @@ export class FileSystemService {
     }
   }
 
+  static async exists(path: string): Promise<boolean> {
+    try {
+      const info = await FileSystem.getInfoAsync(path);
+      return info.exists;
+    } catch (error) {
+      return false;
+    }
+  }
+
   static getLanguageFromFileName(fileName: string): string {
     const ext = fileName.split('.').pop()?.toLowerCase();
     const languageMap: { [key: string]: string } = {
