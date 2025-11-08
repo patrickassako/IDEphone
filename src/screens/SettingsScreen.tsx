@@ -9,26 +9,12 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { GitService } from '../services/GitService';
 
 export const SettingsScreen: React.FC = () => {
-  const [gitName, setGitName] = useState('');
-  const [gitEmail, setGitEmail] = useState('');
+  const navigation = useNavigation();
   const [githubToken, setGithubToken] = useState('');
-
-  const handleSaveGitConfig = () => {
-    if (!gitName.trim() || !gitEmail.trim()) {
-      Alert.alert('Error', 'Please enter both name and email');
-      return;
-    }
-
-    GitService.setConfig({
-      name: gitName,
-      email: gitEmail,
-    });
-
-    Alert.alert('Success', 'Git configuration saved');
-  };
 
   const handleSaveGitHubToken = () => {
     if (!githubToken.trim()) {
@@ -48,33 +34,6 @@ export const SettingsScreen: React.FC = () => {
 
   return (
     <ScrollView style={styles.container}>
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Git Configuration</Text>
-        <Text style={styles.label}>Name</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Your Name"
-          placeholderTextColor="#666"
-          value={gitName}
-          onChangeText={setGitName}
-          autoCapitalize="words"
-        />
-        <Text style={styles.label}>Email</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="your.email@example.com"
-          placeholderTextColor="#666"
-          value={gitEmail}
-          onChangeText={setGitEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-        />
-        <TouchableOpacity style={styles.saveButton} onPress={handleSaveGitConfig}>
-          <Ionicons name="save" size={20} color="#FFF" />
-          <Text style={styles.saveButtonText}>Save Git Config</Text>
-        </TouchableOpacity>
-      </View>
-
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>GitHub Authentication</Text>
         <Text style={styles.description}>
@@ -97,6 +56,14 @@ export const SettingsScreen: React.FC = () => {
         <TouchableOpacity style={styles.saveButton} onPress={handleSaveGitHubToken}>
           <Ionicons name="logo-github" size={20} color="#FFF" />
           <Text style={styles.saveButtonText}>Save GitHub Token</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.reposButton}
+          onPress={() => navigation.navigate('GitHubRepos' as never)}
+        >
+          <Ionicons name="list" size={20} color="#4A90E2" />
+          <Text style={styles.reposButtonText}>Browse My Repositories</Text>
         </TouchableOpacity>
       </View>
 
@@ -162,5 +129,21 @@ const styles = StyleSheet.create({
     color: '#AAA',
     fontSize: 14,
     marginBottom: 5,
+  },
+  reposButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: '#4A90E2',
+    padding: 12,
+    borderRadius: 5,
+    marginTop: 10,
+  },
+  reposButtonText: {
+    color: '#4A90E2',
+    fontWeight: 'bold',
+    marginLeft: 8,
   },
 });

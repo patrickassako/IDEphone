@@ -1,6 +1,7 @@
 import git from 'isomorphic-git';
 import http from 'isomorphic-git/http/web';
 import * as FileSystem from 'expo-file-system/legacy';
+import JSZip from 'jszip';
 import { GitStatus, GitConfig } from '../types';
 
 // Custom FS implementation for isomorphic-git using expo-file-system
@@ -102,6 +103,118 @@ export class GitService {
     }
   }
 
+  /**
+   * Clone a repository by downloading it as a ZIP file
+   * This is more reliable on mobile than using git clone
+   */
+  static async cloneFromZip(
+    owner: string,
+    repo: string,
+    dir: string,
+    branch: string = 'main'
+  ): Promise<void> {
+    try {
+      console.log(`Downloading ${owner}/${repo} from GitHub...`);
+
+      // Construct the ZIP download URL
+      const zipUrl = `https://api.github.com/repos/${owner}/${repo}/zipball/${branch}`;
+
+      console.log('Download URL:', zipUrl);
+
+      // Prepare headers with authentication if available
+      const headers: any = {
+        'Accept': 'application/vnd.github+json',
+      };
+
+      if (this.githubToken) {
+        headers['Authorization'] = `Bearer ${this.githubToken}`;
+      }
+
+      // Download the ZIP file
+      const downloadResult = await FileSystem.downloadAsync(
+        zipUrl,
+        FileSystem.cacheDirectory + 'repo.zip',
+        { headers }
+      );
+
+      if (downloadResult.status !== 200) {
+        throw new Error(`Failed to download repository: HTTP ${downloadResult.status}`);
+      }
+
+      console.log('Download complete, extracting...');
+
+      // Read the ZIP file
+      const zipBase64 = await FileSystem.readAsStringAsync(downloadResult.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      // Convert base64 to binary
+      const zipBinary = atob(zipBase64);
+      const zipArray = new Uint8Array(zipBinary.length);
+      for (let i = 0; i < zipBinary.length; i++) {
+        zipArray[i] = zipBinary.charCodeAt(i);
+      }
+
+      // Load and extract the ZIP
+      const zip = await JSZip.loadAsync(zipArray);
+
+      console.log('Extracting files...');
+
+      // Get the root folder name (GitHub adds a prefix to the folder)
+      const rootFolderName = Object.keys(zip.files)[0].split('/')[0];
+
+      // Extract all files
+      let fileCount = 0;
+      for (const [filename, file] of Object.entries(zip.files)) {
+        // Remove the root folder prefix
+        const relativePath = filename.substring(rootFolderName.length + 1);
+
+        if (!relativePath) continue; // Skip the root folder itself
+
+        const fullPath = dir + '/' + relativePath;
+
+        if (file.dir) {
+          // Create directory
+          await FileSystem.makeDirectoryAsync(fullPath, { intermediates: true });
+        } else {
+          // Ensure parent directory exists before creating file
+          const parentDir = fullPath.substring(0, fullPath.lastIndexOf('/'));
+          try {
+            await FileSystem.makeDirectoryAsync(parentDir, { intermediates: true });
+          } catch (error) {
+            // Directory might already exist, ignore
+          }
+
+          // Create file
+          const content = await file.async('base64');
+          await FileSystem.writeAsStringAsync(fullPath, content, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          fileCount++;
+        }
+      }
+
+      console.log(`Extracted ${fileCount} files`);
+
+      // Clean up the temporary ZIP file
+      await FileSystem.deleteAsync(downloadResult.uri, { idempotent: true });
+
+      console.log('Clone complete!');
+    } catch (error: any) {
+      console.error('Error cloning from ZIP:', error);
+
+      if (error.message?.includes('404') || error.status === 404) {
+        throw new Error('Repository or branch not found. Please check the repository name and branch.');
+      } else if (error.message?.includes('401') || error.status === 401) {
+        throw new Error('Authentication failed. Please check your GitHub token.');
+      } else if (error.message?.includes('403') || error.status === 403) {
+        throw new Error('Access denied. Please ensure your token has the correct permissions.');
+      } else {
+        throw new Error(error.message || 'Failed to clone repository');
+      }
+    }
+  }
+
   static async clone(url: string, dir: string, depth?: number): Promise<void> {
     try {
       const cloneOptions: any = {
@@ -109,8 +222,6 @@ export class GitService {
         http,
         dir,
         url,
-        depth: depth || 1,
-        singleBranch: true,
         corsProxy: 'https://cors.isomorphic-git.org',
       };
 
@@ -118,21 +229,58 @@ export class GitService {
       if (this.githubToken) {
         cloneOptions.onAuth = () => ({
           username: this.githubToken,
-          password: 'x-oauth-basic',
+          password: '',
         });
       }
 
-      await git.clone(cloneOptions);
+      // Try to clone without specifying depth or singleBranch first
+      // This allows git to automatically detect the default branch
+      try {
+        await git.clone(cloneOptions);
+      } catch (firstError: any) {
+        // If that fails and it's a HEAD error, try with explicit ref detection
+        if (firstError.message?.includes('Could not find HEAD')) {
+          console.log('HEAD not found, trying to detect default branch...');
+
+          // Try common default branch names
+          const branches = ['main', 'master', 'develop'];
+          let cloned = false;
+
+          for (const branch of branches) {
+            try {
+              console.log(`Trying to clone with ref: ${branch}`);
+              await git.clone({
+                ...cloneOptions,
+                ref: branch,
+                singleBranch: true,
+              });
+              cloned = true;
+              break;
+            } catch (branchError) {
+              console.log(`Failed with branch ${branch}:`, branchError);
+              continue;
+            }
+          }
+
+          if (!cloned) {
+            throw firstError;
+          }
+        } else {
+          throw firstError;
+        }
+      }
     } catch (error: any) {
       console.error('Error cloning repository:', error);
 
       // Provide more helpful error messages
-      if (error.message?.includes('HTTP 404')) {
+      if (error.message?.includes('HTTP 404') || error.message?.includes('404')) {
         throw new Error('Repository not found. Please check the URL.');
-      } else if (error.message?.includes('HTTP 401') || error.message?.includes('HTTP 403')) {
-        throw new Error('Authentication failed. This might be a private repository. Please add a GitHub token in Settings.');
+      } else if (error.message?.includes('HTTP 401') || error.message?.includes('401')) {
+        throw new Error('Authentication failed. Please check your GitHub token in Settings.');
+      } else if (error.message?.includes('HTTP 403') || error.message?.includes('403')) {
+        throw new Error('Access denied. This might be a private repository. Please ensure your GitHub token has the correct permissions.');
       } else if (error.message?.includes('Could not find HEAD')) {
-        throw new Error('Repository appears to be empty or invalid. Please ensure the repository has at least one commit.');
+        throw new Error('Repository appears to be empty. Please ensure the repository has at least one commit and a default branch.');
       } else if (error.message?.includes('CORS')) {
         throw new Error('Network error. Please check your internet connection.');
       } else {

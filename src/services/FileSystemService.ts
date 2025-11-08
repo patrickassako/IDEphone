@@ -146,4 +146,13 @@ export class FileSystemService {
   static getBaseDir(): string {
     return this.baseDir;
   }
+
+  static async exists(path: string): Promise<boolean> {
+    try {
+      const info = await FileSystem.getInfoAsync(path);
+      return info.exists;
+    } catch (error) {
+      return false;
+    }
+  }
 }

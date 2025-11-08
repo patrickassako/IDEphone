@@ -9,6 +9,7 @@ import { EditorProvider } from './src/contexts/EditorContext';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { EditorScreen } from './src/screens/EditorScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
+import { GitHubReposScreen } from './src/screens/GitHubReposScreen';
 import { Repository } from './src/types';
 
 const Stack = createStackNavigator();
@@ -73,6 +74,14 @@ export default function App() {
               options={{
                 title: 'Settings',
                 headerBackTitle: 'Home',
+              }}
+            />
+            <Stack.Screen
+              name="GitHubRepos"
+              component={GitHubReposScreen}
+              options={{
+                title: 'GitHub Repositories',
+                headerBackTitle: 'Settings',
               }}
             />
           </Stack.Navigator>
