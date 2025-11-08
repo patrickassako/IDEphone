@@ -1,0 +1,300 @@
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View,
+  TextInput,
+  StyleSheet,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  Dimensions,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { FileSystemService } from '../services/FileSystemService';
+
+interface EnhancedCodeEditorProps {
+  filePath: string;
+  fileName: string;
+  initialContent?: string;
+  onContentChange?: (content: string, isDirty: boolean) => void;
+  onSave?: () => void;
+  readOnly?: boolean;
+}
+
+export const EnhancedCodeEditor: React.FC<EnhancedCodeEditorProps> = ({
+  filePath,
+  fileName,
+  initialContent = '',
+  onContentChange,
+  onSave,
+  readOnly = false,
+}) => {
+  const [content, setContent] = useState(initialContent);
+  const [isDirty, setIsDirty] = useState(false);
+  const [lineCount, setLineCount] = useState(1);
+  const [fontSize, setFontSize] = useState(14);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const lineNumberScrollRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    loadFile();
+  }, [filePath]);
+
+  useEffect(() => {
+    if (initialContent !== content) {
+      setContent(initialContent);
+      updateLineCount(initialContent);
+    }
+  }, [initialContent]);
+
+  const loadFile = async () => {
+    try {
+      const fileContent = await FileSystemService.readFile(filePath);
+      setContent(fileContent);
+      setIsDirty(false);
+      updateLineCount(fileContent);
+    } catch (error) {
+      console.error('Error loading file:', error);
+    }
+  };
+
+  const handleContentChange = (newContent: string) => {
+    setContent(newContent);
+    setIsDirty(true);
+    updateLineCount(newContent);
+    onContentChange?.(newContent, true);
+  };
+
+  const updateLineCount = (text: string) => {
+    const lines = text.split('\n').length;
+    setLineCount(lines);
+  };
+
+  const handleSave = async () => {
+    try {
+      await FileSystemService.writeFile(filePath, content);
+      setIsDirty(false);
+      onContentChange?.(content, false);
+      onSave?.();
+    } catch (error) {
+      console.error('Error saving file:', error);
+    }
+  };
+
+  const increaseFontSize = () => {
+    setFontSize((prev) => Math.min(prev + 2, 24));
+  };
+
+  const decreaseFontSize = () => {
+    setFontSize((prev) => Math.max(prev - 2, 10));
+  };
+
+  const handleScroll = (event: any) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    lineNumberScrollRef.current?.scrollTo({ y: offsetY, animated: false });
+  };
+
+  const renderLineNumbers = () => {
+    return (
+      <View style={styles.lineNumberContainer}>
+        {Array.from({ length: lineCount }, (_, i) => (
+          <Text key={i} style={[styles.lineNumber, { fontSize, lineHeight: fontSize * 1.5 }]}>
+            {i + 1}
+          </Text>
+        ))}
+      </View>
+    );
+  };
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.toolbar}>
+        <View style={styles.fileInfo}>
+          <Text style={styles.fileName}>{fileName}</Text>
+          {isDirty && !readOnly && <Text style={styles.dirtyIndicator}>●</Text>}
+          {readOnly && (
+            <View style={styles.readOnlyBadge}>
+              <Ionicons name="lock-closed" size={12} color="#FFD700" />
+              <Text style={styles.readOnlyText}>Read-only</Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.toolbarButtons}>
+          <TouchableOpacity style={styles.toolbarButton} onPress={decreaseFontSize}>
+            <Ionicons name="remove-circle-outline" size={20} color="#FFF" />
+          </TouchableOpacity>
+          <Text style={styles.fontSizeText}>{fontSize}</Text>
+          <TouchableOpacity style={styles.toolbarButton} onPress={increaseFontSize}>
+            <Ionicons name="add-circle-outline" size={20} color="#FFF" />
+          </TouchableOpacity>
+          {!readOnly && (
+            <TouchableOpacity
+              style={[styles.toolbarButton, styles.saveButton]}
+              onPress={handleSave}
+              disabled={!isDirty}
+            >
+              <Ionicons
+                name="save"
+                size={20}
+                color={isDirty ? '#4A90E2' : '#666'}
+              />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      <View style={styles.editorContainer}>
+        <ScrollView
+          ref={lineNumberScrollRef}
+          style={styles.lineNumberScroll}
+          scrollEnabled={false}
+          showsVerticalScrollIndicator={false}
+        >
+          {renderLineNumbers()}
+        </ScrollView>
+
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.codeScroll}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          nestedScrollEnabled
+          showsVerticalScrollIndicator={true}
+        >
+          <TextInput
+            style={[
+              styles.codeInput,
+              { fontSize, lineHeight: fontSize * 1.5 },
+              readOnly && styles.readOnlyInput,
+            ]}
+            value={content}
+            onChangeText={readOnly ? undefined : handleContentChange}
+            multiline
+            autoCapitalize="none"
+            autoCorrect={false}
+            spellCheck={false}
+            textAlignVertical="top"
+            scrollEnabled={false}
+            editable={!readOnly}
+            keyboardType="ascii-capable"
+            autoComplete="off"
+            selectTextOnFocus={false}
+            contextMenuHidden={false}
+          />
+        </ScrollView>
+      </View>
+
+      <View style={styles.statusBar}>
+        <Text style={styles.statusText}>
+          Lines: {lineCount} | Size: {fontSize}px
+        </Text>
+        <Text style={styles.statusText}>
+          {FileSystemService.getLanguageFromFileName(fileName)} • Android
+        </Text>
+      </View>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#1E1E1E',
+  },
+  toolbar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 10,
+    backgroundColor: '#2D2D2D',
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
+  fileInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  fileName: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  dirtyIndicator: {
+    color: '#4A90E2',
+    marginLeft: 5,
+    fontSize: 20,
+  },
+  readOnlyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#3D3D00',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
+  readOnlyText: {
+    color: '#FFD700',
+    fontSize: 11,
+    fontWeight: 'bold',
+    marginLeft: 4,
+  },
+  toolbarButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  toolbarButton: {
+    marginLeft: 10,
+    padding: 5,
+  },
+  fontSizeText: {
+    color: '#FFF',
+    fontSize: 12,
+    marginHorizontal: 5,
+  },
+  saveButton: {
+    marginLeft: 15,
+  },
+  editorContainer: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  lineNumberContainer: {
+    backgroundColor: '#252525',
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+  },
+  lineNumber: {
+    color: '#858585',
+    fontFamily: 'monospace',
+    textAlign: 'right',
+  },
+  lineNumberScroll: {
+    maxWidth: 60,
+  },
+  codeScroll: {
+    flex: 1,
+  },
+  codeInput: {
+    flex: 1,
+    color: '#D4D4D4',
+    fontFamily: 'monospace',
+    padding: 10,
+    minHeight: Dimensions.get('window').height,
+  },
+  readOnlyInput: {
+    backgroundColor: '#1A1A1A',
+    color: '#AAA',
+  },
+  statusBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    backgroundColor: '#007ACC',
+  },
+  statusText: {
+    color: '#FFF',
+    fontSize: 12,
+  },
+});

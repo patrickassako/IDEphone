@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet, Dimensions, TouchableOpacity, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FileBrowser } from '../components/FileBrowser';
-import { MonacoEditor } from '../components/MonacoEditor';
+import { SmartEditor } from '../components/SmartEditor';
 import { TabBar } from '../components/TabBar';
 import { GitPanel } from '../components/GitPanel';
 import { useEditor } from '../contexts/EditorContext';
@@ -146,7 +146,7 @@ export const EditorScreen: React.FC = () => {
             )}
 
             {activeTab ? (
-              <MonacoEditor
+              <SmartEditor
                 key={activeTab.id}
                 filePath={activeTab.path}
                 fileName={activeTab.name}
