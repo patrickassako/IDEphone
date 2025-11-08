@@ -11,6 +11,7 @@ interface SmartEditorProps {
   language?: string;
   onContentChange?: (content: string, isDirty: boolean) => void;
   onSave?: () => void;
+  onTextSelection?: (selectedText: string, start: number, end: number) => void;
   readOnly?: boolean;
   theme?: 'vs-dark' | 'vs-light' | 'hc-black';
 }
@@ -37,6 +38,7 @@ export const SmartEditor: React.FC<SmartEditorProps> = (props) => {
           language={props.language}
           onContentChange={props.onContentChange}
           onSave={props.onSave}
+          onTextSelection={props.onTextSelection}
           readOnly={props.readOnly}
           theme={editorTheme}
         />
@@ -65,6 +67,7 @@ export const SmartEditor: React.FC<SmartEditorProps> = (props) => {
       language={props.language}
       onContentChange={props.onContentChange}
       onSave={props.onSave}
+      onTextSelection={props.onTextSelection}
       readOnly={props.readOnly}
       theme={editorTheme}
     />

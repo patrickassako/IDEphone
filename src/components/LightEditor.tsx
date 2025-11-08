@@ -10,6 +10,7 @@ interface LightEditorProps {
   language?: string;
   onContentChange?: (content: string, isDirty: boolean) => void;
   onSave?: () => void;
+  onTextSelection?: (selectedText: string, start: number, end: number) => void;
   readOnly?: boolean;
   theme?: 'dark' | 'light';
 }
@@ -21,6 +22,7 @@ export const LightEditor: React.FC<LightEditorProps> = ({
   language = 'javascript',
   onContentChange,
   onSave,
+  onTextSelection,
   readOnly = false,
   theme = 'dark',
 }) => {
@@ -76,6 +78,9 @@ export const LightEditor: React.FC<LightEditorProps> = ({
           setIsDirty(false);
           onContentChange?.(data.content, false);
           onSave?.();
+          break;
+        case 'textSelection':
+          onTextSelection?.(data.selectedText, data.start, data.end);
           break;
       }
     } catch (error) {
@@ -274,6 +279,42 @@ export const LightEditor: React.FC<LightEditorProps> = ({
                 editor.selectionStart = editor.selectionEnd = start + 2;
                 updateHighlighting();
             }
+        });
+
+        // Text selection detection
+        let selectionTimeout;
+        editor.addEventListener('mouseup', () => {
+            clearTimeout(selectionTimeout);
+            selectionTimeout = setTimeout(() => {
+                const start = editor.selectionStart;
+                const end = editor.selectionEnd;
+                if (start !== end) {
+                    const selectedText = editor.value.substring(start, end);
+                    window.ReactNativeWebView.postMessage(JSON.stringify({
+                        type: 'textSelection',
+                        selectedText: selectedText,
+                        start: start,
+                        end: end
+                    }));
+                }
+            }, 100);
+        });
+
+        editor.addEventListener('touchend', () => {
+            clearTimeout(selectionTimeout);
+            selectionTimeout = setTimeout(() => {
+                const start = editor.selectionStart;
+                const end = editor.selectionEnd;
+                if (start !== end) {
+                    const selectedText = editor.value.substring(start, end);
+                    window.ReactNativeWebView.postMessage(JSON.stringify({
+                        type: 'textSelection',
+                        selectedText: selectedText,
+                        start: start,
+                        end: end
+                    }));
+                }
+            }, 100);
         });
 
         // Set initial content

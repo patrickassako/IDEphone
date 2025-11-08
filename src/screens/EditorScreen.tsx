@@ -6,11 +6,13 @@ import { SmartEditor } from '../components/SmartEditor';
 import { TabBar } from '../components/TabBar';
 import { GitPanel } from '../components/GitPanel';
 import { AIAssistantDrawer } from '../components/AIAssistantDrawer';
+import { CodeActionMenu, CodeAction } from '../components/CodeActionMenu';
+import { AIResultModal } from '../components/AIResultModal';
 import { useEditor } from '../contexts/EditorContext';
 import { FileItem, TabItem } from '../types';
 import { FileSystemService } from '../services/FileSystemService';
 import { PreferencesService } from '../services/PreferencesService';
-import { AIService } from '../services/ai';
+import { AIService, AIContextBuilder } from '../services/ai';
 
 const { width } = Dimensions.get('window');
 
@@ -22,6 +24,18 @@ export const EditorScreen: React.FC = () => {
   const [readOnlyMode, setReadOnlyMode] = useState(false);
   const [showAIAssistant, setShowAIAssistant] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(false);
+
+  // Code action states
+  const [selectedText, setSelectedText] = useState('');
+  const [selectionStart, setSelectionStart] = useState(0);
+  const [selectionEnd, setSelectionEnd] = useState(0);
+  const [showActionMenu, setShowActionMenu] = useState(false);
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [aiResultTitle, setAiResultTitle] = useState('');
+  const [aiResultContent, setAiResultContent] = useState('');
+  const [aiResultCodeBlocks, setAiResultCodeBlocks] = useState<Array<{ language: string; code: string }>>([]);
+  const [isAILoading, setIsAILoading] = useState(false);
+
   const { tabs, activeTabId, addTab, removeTab, updateTab, setActiveTab, getActiveTab } =
     useEditor();
 
@@ -83,6 +97,71 @@ export const EditorScreen: React.FC = () => {
     if (activeTabId) {
       updateTab(activeTabId, { content, isDirty });
     }
+  };
+
+  const handleTextSelection = (text: string, start: number, end: number) => {
+    if (text.trim().length > 0 && aiEnabled) {
+      setSelectedText(text);
+      setSelectionStart(start);
+      setSelectionEnd(end);
+      setShowActionMenu(true);
+    }
+  };
+
+  const handleCodeAction = async (action: CodeAction) => {
+    if (!activeTab) return;
+
+    const actionTitles: Record<CodeAction, string> = {
+      fix: 'Fix Code',
+      explain: 'Explain Code',
+      refactor: 'Refactor Code',
+      document: 'Add Documentation',
+    };
+
+    const actionPrompts: Record<CodeAction, string> = {
+      fix: 'Fix any bugs or issues in this code:\n\n',
+      explain: 'Explain what this code does in simple terms:\n\n',
+      refactor: 'Refactor this code to improve readability and performance:\n\n',
+      document: 'Add clear, concise comments and documentation to this code:\n\n',
+    };
+
+    setAiResultTitle(actionTitles[action]);
+    setAiResultContent('');
+    setAiResultCodeBlocks([]);
+    setIsAILoading(true);
+    setShowResultModal(true);
+
+    try {
+      const context = AIContextBuilder.buildMinimal(
+        activeTab.name,
+        activeTab.content,
+        selectedText
+      );
+
+      const response = await AIService.generateResponse(
+        actionPrompts[action] + selectedText,
+        context
+      );
+
+      setAiResultContent(response.content);
+      setAiResultCodeBlocks(response.codeBlocks || []);
+    } catch (error: any) {
+      setAiResultContent(`Error: ${error.message || 'Failed to get AI response'}`);
+    } finally {
+      setIsAILoading(false);
+    }
+  };
+
+  const handleApplyCode = (code: string) => {
+    if (!activeTab || !activeTabId) return;
+
+    const currentContent = activeTab.content;
+    const newContent =
+      currentContent.substring(0, selectionStart) +
+      code +
+      currentContent.substring(selectionEnd);
+
+    updateTab(activeTabId, { content: newContent, isDirty: true });
   };
 
   const activeTab = getActiveTab();
@@ -178,6 +257,7 @@ export const EditorScreen: React.FC = () => {
                 initialContent={activeTab.content}
                 language={activeTab.language || 'text'}
                 onContentChange={handleContentChange}
+                onTextSelection={handleTextSelection}
                 onSave={() => {
                   if (activeTabId) {
                     updateTab(activeTabId, { isDirty: false });
@@ -216,6 +296,24 @@ export const EditorScreen: React.FC = () => {
             updateTab(activeTabId, { content: code, isDirty: true });
           }
         }}
+      />
+
+      {/* Code Action Menu */}
+      <CodeActionMenu
+        visible={showActionMenu}
+        onAction={handleCodeAction}
+        onClose={() => setShowActionMenu(false)}
+      />
+
+      {/* AI Result Modal */}
+      <AIResultModal
+        visible={showResultModal}
+        title={aiResultTitle}
+        content={aiResultContent}
+        codeBlocks={aiResultCodeBlocks}
+        isLoading={isAILoading}
+        onApply={handleApplyCode}
+        onClose={() => setShowResultModal(false)}
       />
     </View>
   );
