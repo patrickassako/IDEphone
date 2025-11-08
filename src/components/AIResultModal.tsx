@@ -1,9 +1,10 @@
 /**
  * AI Result Modal Component
  * Displays AI response inline with options to apply or dismiss
+ * Now with resizable modal for better readability
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -14,6 +15,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+
+type ModalSize = 'small' | 'medium' | 'large' | 'fullscreen';
 
 interface AIResultModalProps {
   visible: boolean;
@@ -34,21 +37,65 @@ export const AIResultModal: React.FC<AIResultModalProps> = ({
   onApply,
   onClose,
 }) => {
+  const [modalSize, setModalSize] = useState<ModalSize>('medium');
+
   if (!visible) return null;
+
+  const getModalStyle = () => {
+    switch (modalSize) {
+      case 'small':
+        return { width: '70%', maxHeight: '50%' };
+      case 'medium':
+        return { width: '90%', maxHeight: '70%' };
+      case 'large':
+        return { width: '95%', maxHeight: '85%' };
+      case 'fullscreen':
+        return { width: '100%', height: '100%', borderRadius: 0, margin: 0 };
+      default:
+        return { width: '90%', maxHeight: '70%' };
+    }
+  };
 
   return (
     <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
       <View style={styles.container}>
         <View style={styles.backdrop} />
-        <View style={styles.modal}>
+        <View style={[styles.modal, getModalStyle()]}>
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <Ionicons name="sparkles" size={20} color="#9F7AEA" />
               <Text style={styles.headerTitle}>{title}</Text>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color="#FFF" />
-            </TouchableOpacity>
+            <View style={styles.headerRight}>
+              {/* Size controls */}
+              <TouchableOpacity
+                onPress={() => setModalSize('small')}
+                style={[styles.sizeButton, modalSize === 'small' && styles.sizeButtonActive]}
+              >
+                <Ionicons name="contract-outline" size={16} color={modalSize === 'small' ? '#4A90E2' : '#AAA'} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setModalSize('medium')}
+                style={[styles.sizeButton, modalSize === 'medium' && styles.sizeButtonActive]}
+              >
+                <Ionicons name="square-outline" size={16} color={modalSize === 'medium' ? '#4A90E2' : '#AAA'} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setModalSize('large')}
+                style={[styles.sizeButton, modalSize === 'large' && styles.sizeButtonActive]}
+              >
+                <Ionicons name="expand-outline" size={16} color={modalSize === 'large' ? '#4A90E2' : '#AAA'} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setModalSize('fullscreen')}
+                style={[styles.sizeButton, modalSize === 'fullscreen' && styles.sizeButtonActive]}
+              >
+                <Ionicons name="scan-outline" size={16} color={modalSize === 'fullscreen' ? '#4A90E2' : '#AAA'} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                <Ionicons name="close" size={20} color="#FFF" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <ScrollView style={styles.content}>
@@ -117,8 +164,6 @@ const styles = StyleSheet.create({
   modal: {
     backgroundColor: '#1E1E1E',
     borderRadius: 16,
-    width: '90%',
-    maxHeight: '70%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -129,22 +174,40 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
+    padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#333',
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   headerTitle: {
     color: '#FFF',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     marginLeft: 8,
   },
+  sizeButton: {
+    padding: 6,
+    borderRadius: 6,
+    backgroundColor: '#2D2D2D',
+  },
+  sizeButtonActive: {
+    backgroundColor: 'rgba(74, 144, 226, 0.2)',
+    borderWidth: 1,
+    borderColor: '#4A90E2',
+  },
   closeButton: {
-    padding: 4,
+    padding: 6,
+    borderRadius: 6,
+    backgroundColor: '#2D2D2D',
   },
   content: {
     flex: 1,
@@ -162,9 +225,10 @@ const styles = StyleSheet.create({
   },
   contentText: {
     color: '#FFF',
-    fontSize: 14,
-    lineHeight: 22,
+    fontSize: 15,
+    lineHeight: 24,
     marginBottom: 16,
+    letterSpacing: 0.2,
   },
   codeBlockContainer: {
     marginTop: 12,
