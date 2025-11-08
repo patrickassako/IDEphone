@@ -34,8 +34,10 @@ export class StreamingProjectGenerator {
 
   /**
    * Generate a complete project from AI with streaming updates
+   * @param config Project configuration
+   * @param simulationMode If true, uses mock data instead of AI (for testing UI)
    */
-  async generateProject(config: ProjectConfig): Promise<void> {
+  async generateProject(config: ProjectConfig, simulationMode: boolean = false): Promise<void> {
     try {
       // Phase 1: Analyzing (0-20%)
       await this.analyzeRequirements(config);
@@ -44,7 +46,9 @@ export class StreamingProjectGenerator {
       await this.planProjectStructure(config);
 
       // Phase 3: Creating (40-90%)
-      const files = await this.createProjectFiles(config);
+      const files = simulationMode
+        ? await this.createProjectFilesSimulation(config)
+        : await this.createProjectFiles(config);
 
       // Phase 4: Finalizing (90-100%)
       await this.finalizeProject(files);
@@ -169,6 +173,180 @@ export class StreamingProjectGenerator {
       this.addMessage('info', `Error: ${error.message}`);
       throw error;
     }
+  }
+
+  /**
+   * Phase 3 (Simulation): Create mock project files for testing UI
+   */
+  private async createProjectFilesSimulation(config: ProjectConfig): Promise<GeneratedFile[]> {
+    this.currentPhase = 'creating';
+    this.events.onProgress(45, 'Starting file generation (simulation)...');
+    this.addMessage('progress', '⟳ Creating project files (simulation)...', 'sparkles');
+
+    // Mock files based on template
+    const mockFiles: GeneratedFile[] = [];
+
+    // Always add package.json
+    mockFiles.push({
+      path: 'package.json',
+      content: JSON.stringify({
+        name: config.description.split(' ').slice(0, 3).join('-').toLowerCase() || 'my-app',
+        version: '1.0.0',
+        description: config.description,
+        scripts: {
+          dev: 'vite',
+          build: 'vite build',
+          preview: 'vite preview',
+        },
+        dependencies: {
+          react: '^18.2.0',
+          'react-dom': '^18.2.0',
+        },
+        devDependencies: {
+          vite: '^5.0.0',
+          '@types/react': '^18.2.0',
+          '@types/react-dom': '^18.2.0',
+        },
+      }, null, 2),
+      language: 'json',
+    });
+
+    // Add README
+    mockFiles.push({
+      path: 'README.md',
+      content: `# ${config.description}\n\nGenerated with IDEphone AI Project Generator\n\n## Features\n\n- ${config.framework} framework\n- ${config.styling} styling\n${config.typescript ? '- TypeScript support\n' : ''}${config.tests ? '- Test suite included\n' : ''}\n\n## Getting Started\n\n\`\`\`bash\nnpm install\nnpm run dev\n\`\`\`\n`,
+      language: 'markdown',
+    });
+
+    // Add index.html
+    mockFiles.push({
+      path: 'index.html',
+      content: `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${config.description}</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.${config.typescript ? 'tsx' : 'jsx'}"></script>
+  </body>
+</html>`,
+      language: 'html',
+    });
+
+    // Add src directory files
+    mockFiles.push({
+      path: `src/main.${config.typescript ? 'tsx' : 'jsx'}`,
+      content: `import React from 'react';\nimport ReactDOM from 'react-dom/client';\nimport App from './App';\nimport './index.css';\n\nReactDOM.createRoot(document.getElementById('root')${config.typescript ? '!' : ''}).render(\n  <React.StrictMode>\n    <App />\n  </React.StrictMode>\n);`,
+      language: config.typescript ? 'typescript' : 'javascript',
+    });
+
+    mockFiles.push({
+      path: `src/App.${config.typescript ? 'tsx' : 'jsx'}`,
+      content: `${config.typescript ? "import React from 'react';\n\n" : ''}function App() {\n  return (\n    <div className="app">\n      <h1>${config.description}</h1>\n      <p>Built with ${config.framework} and ${config.styling}</p>\n    </div>\n  );\n}\n\nexport default App;`,
+      language: config.typescript ? 'typescript' : 'javascript',
+    });
+
+    mockFiles.push({
+      path: 'src/index.css',
+      content: `* {\n  margin: 0;\n  padding: 0;\n  box-sizing: border-box;\n}\n\nbody {\n  font-family: system-ui, -apple-system, sans-serif;\n  background: #0f0f0f;\n  color: #fff;\n}\n\n.app {\n  min-height: 100vh;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n  padding: 2rem;\n}\n\nh1 {\n  font-size: 3rem;\n  margin-bottom: 1rem;\n  background: linear-gradient(135deg, #2eaadc 0%, #9f7aea 100%);\n  -webkit-background-clip: text;\n  -webkit-text-fill-color: transparent;\n}\n\np {\n  color: #aaa;\n  font-size: 1.2rem;\n}`,
+      language: 'css',
+    });
+
+    // Add component files
+    mockFiles.push({
+      path: `src/components/Button.${config.typescript ? 'tsx' : 'jsx'}`,
+      content: `${config.typescript ? "import React from 'react';\n\ninterface ButtonProps {\n  onClick?: () => void;\n  children: React.ReactNode;\n}\n\n" : ''}function Button(${config.typescript ? '{ onClick, children }: ButtonProps' : '{ onClick, children }'}) {\n  return (\n    <button onClick={onClick} className="button">\n      {children}\n    </button>\n  );\n}\n\nexport default Button;`,
+      language: config.typescript ? 'typescript' : 'javascript',
+    });
+
+    mockFiles.push({
+      path: 'src/components/Card.' + (config.typescript ? 'tsx' : 'jsx'),
+      content: `${config.typescript ? "import React from 'react';\n\ninterface CardProps {\n  title: string;\n  children: React.ReactNode;\n}\n\n" : ''}function Card(${config.typescript ? '{ title, children }: CardProps' : '{ title, children }'}) {\n  return (\n    <div className="card">\n      <h2>{title}</h2>\n      <div className="card-content">{children}</div>\n    </div>\n  );\n}\n\nexport default Card;`,
+      language: config.typescript ? 'typescript' : 'javascript',
+    });
+
+    // Add vite config
+    if (config.framework === 'vite') {
+      mockFiles.push({
+        path: 'vite.config.' + (config.typescript ? 'ts' : 'js'),
+        content: `import { defineConfig } from 'vite';\nimport react from '@vitejs/plugin-react';\n\nexport default defineConfig({\n  plugins: [react()],\n});`,
+        language: config.typescript ? 'typescript' : 'javascript',
+      });
+    }
+
+    // Add TypeScript config if enabled
+    if (config.typescript) {
+      mockFiles.push({
+        path: 'tsconfig.json',
+        content: JSON.stringify({
+          compilerOptions: {
+            target: 'ES2020',
+            useDefineForClassFields: true,
+            lib: ['ES2020', 'DOM', 'DOM.Iterable'],
+            module: 'ESNext',
+            skipLibCheck: true,
+            moduleResolution: 'bundler',
+            allowImportingTsExtensions: true,
+            resolveJsonModule: true,
+            isolatedModules: true,
+            noEmit: true,
+            jsx: 'react-jsx',
+            strict: true,
+            noUnusedLocals: true,
+            noUnusedParameters: true,
+            noFallthroughCasesInSwitch: true,
+          },
+          include: ['src'],
+          references: [{ path: './tsconfig.node.json' }],
+        }, null, 2),
+        language: 'json',
+      });
+    }
+
+    // Add .gitignore if git enabled
+    if (config.git) {
+      mockFiles.push({
+        path: '.gitignore',
+        content: `node_modules\ndist\n.env\n.DS_Store\n*.log`,
+        language: 'text',
+      });
+    }
+
+    // Simulate streaming file creation
+    const progressPerFile = 45 / mockFiles.length;
+
+    for (let i = 0; i < mockFiles.length; i++) {
+      const file = mockFiles[i];
+      const currentProgress = 45 + (i * progressPerFile);
+
+      // Check if it's a directory or file
+      if (file.path.includes('/')) {
+        const dirPath = file.path.substring(0, file.path.lastIndexOf('/'));
+        this.createDirectory(dirPath);
+      }
+
+      // Emit file start event
+      this.events.onFileStart(file.path);
+      this.addMessage('file', `  Creating ${file.path}...`, 'document-outline', 1);
+      this.updateFileTree(file.path, 'creating');
+
+      await this.sleep(400); // Simulate file creation time
+
+      // Emit file complete event
+      this.events.onFileComplete(file.path, file.content);
+      this.addMessage('success', `  ✓ Created ${file.path}`, 'checkmark-circle', 1);
+      this.updateFileTree(file.path, 'completed');
+
+      this.events.onProgress(
+        Math.min(90, currentProgress + progressPerFile),
+        `Created ${i + 1}/${mockFiles.length} files`
+      );
+    }
+
+    return mockFiles;
   }
 
   /**

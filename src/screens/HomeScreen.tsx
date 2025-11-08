@@ -20,6 +20,9 @@ import { FolderPickerService } from '../services/FolderPickerService';
 import { Repository } from '../types';
 import { useEditor } from '../contexts/EditorContext';
 import { GitService } from '../services/GitService';
+import { ProjectGeneratorModal, ProjectConfig } from '../components/ProjectGeneratorModal';
+import { StreamingConsole, StreamMessage, FileTreeNode } from '../components/StreamingConsole';
+import { StreamingProjectGenerator } from '../services/ai/StreamingProjectGenerator';
 
 interface HomeScreenProps {
   onProjectSelect: (repo: Repository) => void;
@@ -33,6 +36,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
   const [cloneUrl, setCloneUrl] = useState('');
   const [isImporting, setIsImporting] = useState(false);
   const { setRootPath, setCurrentRepository } = useEditor();
+
+  // AI Project Generator states
+  const [showProjectGenerator, setShowProjectGenerator] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [streamMessages, setStreamMessages] = useState<StreamMessage[]>([]);
+  const [fileTree, setFileTree] = useState<FileTreeNode[]>([]);
+  const [generationProgress, setGenerationProgress] = useState(0);
+  const [estimatedTime, setEstimatedTime] = useState<number>();
 
   useEffect(() => {
     loadProjects();
@@ -505,6 +516,100 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
     }
   };
 
+  /**
+   * Handle AI Project Generation with simulation mode
+   */
+  const handleGenerateProject = async (config: ProjectConfig) => {
+    try {
+      // Reset state
+      setStreamMessages([]);
+      setFileTree([]);
+      setGenerationProgress(0);
+      setIsGenerating(true);
+
+      const generator = new StreamingProjectGenerator({
+        onProgress: (percent, message) => {
+          setGenerationProgress(percent);
+          if (percent > 0 && percent < 100) {
+            setEstimatedTime(Math.round((100 - percent) / 10));
+          }
+        },
+        onMessage: (message) => {
+          setStreamMessages((prev) => [...prev, message]);
+        },
+        onFileStart: () => {},
+        onFileComplete: () => {},
+        onDirectoryCreate: () => {},
+        onTreeUpdate: (tree) => {
+          setFileTree(tree);
+        },
+        onComplete: async (files, summary) => {
+          console.log('✅ Project generation complete!');
+          console.log('Summary:', summary);
+
+          try {
+            // Create project directory
+            const baseDir = FileSystemService.getBaseDir();
+            const projectName = config.description.split(' ').slice(0, 3).join('-').toLowerCase().replace(/[^a-z0-9-]/g, '-') || 'ai-project';
+            const projectPath = await FileSystemService.createDirectory(baseDir, projectName);
+
+            // Initialize git repository if requested
+            if (config.git) {
+              await GitService.init(projectPath);
+            }
+
+            // Create all files
+            for (const file of files) {
+              const fullPath = `${projectPath}/${file.path}`;
+              const dirPath = fullPath.substring(0, fullPath.lastIndexOf('/'));
+
+              // Ensure directory exists
+              if (dirPath !== projectPath) {
+                await FileSystemService.ensureDirectoryExists(dirPath);
+              }
+
+              // Write file
+              await FileSystemService.writeFile(fullPath, file.content);
+            }
+
+            const newRepo: Repository = {
+              name: projectName,
+              path: projectPath,
+            };
+
+            // Close generator modal
+            setTimeout(() => {
+              setIsGenerating(false);
+              setShowProjectGenerator(false);
+              loadProjects();
+
+              // Show success and open project
+              Alert.alert('Success', summary, [
+                { text: 'OK', onPress: () => handleOpenProject(newRepo) },
+              ]);
+            }, 2000);
+          } catch (error: any) {
+            console.error('Error creating files:', error);
+            Alert.alert('Error', 'Failed to create project files');
+            setIsGenerating(false);
+          }
+        },
+        onError: (error) => {
+          console.error('Generation error:', error);
+          Alert.alert('Error', error);
+          setIsGenerating(false);
+        },
+      });
+
+      // Run generation with simulation mode enabled (for testing UI)
+      await generator.generateProject(config, true); // Pass true for simulation mode
+    } catch (error: any) {
+      console.error('Project generation failed:', error);
+      Alert.alert('Error', error.message || 'Failed to generate project');
+      setIsGenerating(false);
+    }
+  };
+
   const renderProject = ({ item }: { item: Repository }) => (
     <TouchableOpacity
       style={styles.projectItem}
@@ -528,6 +633,21 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
         <Text style={styles.title}>IDEphone</Text>
         <Text style={styles.subtitle}>Mobile Code Editor</Text>
       </View>
+
+      {/* AI Project Generator - Prominent Button */}
+      <TouchableOpacity
+        style={styles.aiProjectButton}
+        onPress={() => setShowProjectGenerator(true)}
+      >
+        <View style={styles.aiProjectIconContainer}>
+          <Ionicons name="sparkles" size={28} color="#FFF" />
+        </View>
+        <View style={styles.aiProjectTextContainer}>
+          <Text style={styles.aiProjectTitle}>Create Project with AI</Text>
+          <Text style={styles.aiProjectSubtitle}>Generate complete projects from prompts</Text>
+        </View>
+        <Ionicons name="arrow-forward" size={24} color="#2EAADC" />
+      </TouchableOpacity>
 
       <View style={styles.actionsContainer}>
         <View style={styles.actions}>
@@ -663,6 +783,28 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
           </View>
         </View>
       </Modal>
+
+      {/* AI Project Generator Modal */}
+      {!isGenerating ? (
+        <ProjectGeneratorModal
+          visible={showProjectGenerator}
+          onClose={() => setShowProjectGenerator(false)}
+          onGenerate={handleGenerateProject}
+        />
+      ) : (
+        <Modal transparent visible={showProjectGenerator} animationType="none">
+          <View style={styles.streamingContainer}>
+            <View style={styles.streamingContent}>
+              <StreamingConsole
+                messages={streamMessages}
+                fileTree={fileTree}
+                progress={generationProgress}
+                estimatedTime={estimatedTime}
+              />
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 };
@@ -820,5 +962,60 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#FFF',
     fontWeight: 'bold',
+  },
+  // AI Project Button
+  aiProjectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(46, 170, 220, 0.15)',
+    borderWidth: 2,
+    borderColor: '#2EAADC',
+    borderRadius: 16,
+    padding: 20,
+    marginHorizontal: 20,
+    marginVertical: 15,
+    shadowColor: '#2EAADC',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  aiProjectIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    backgroundColor: '#2EAADC',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  aiProjectTextContainer: {
+    flex: 1,
+  },
+  aiProjectTitle: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  aiProjectSubtitle: {
+    color: '#AAA',
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  // Streaming Console Container
+  streamingContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 10,
+  },
+  streamingContent: {
+    width: '100%',
+    maxHeight: '95%',
+    backgroundColor: '#1A1A1A',
+    borderRadius: 24,
+    overflow: 'hidden',
   },
 });
