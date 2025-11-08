@@ -413,7 +413,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   chatContent: {
-    padding: 16,
+    padding: 12,
+    paddingBottom: 8,
   },
   emptyState: {
     alignItems: 'center',
@@ -433,7 +434,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   messageContainer: {
-    marginBottom: 16,
+    marginBottom: 12,
     padding: 12,
     borderRadius: 8,
   },

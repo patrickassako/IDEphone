@@ -24,6 +24,17 @@ export const LightEditor: React.FC<LightEditorProps> = ({
   readOnly = false,
   theme = 'dark',
 }) => {
+  // Map languages to Prism.js language names
+  const getPrismLanguage = (lang: string): string => {
+    const prismMap: { [key: string]: string } = {
+      'html': 'markup',
+      'xml': 'markup',
+    };
+    return prismMap[lang] || lang;
+  };
+
+  const prismLanguage = getPrismLanguage(language);
+
   const [content, setContent] = useState(initialContent);
   const [isDirty, setIsDirty] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -185,7 +196,7 @@ export const LightEditor: React.FC<LightEditorProps> = ({
     <div id="container">
         <div id="line-numbers"></div>
         <div id="editor-wrapper">
-            <pre id="highlight"><code id="highlighting" class="language-${language}"></code></pre>
+            <pre id="highlight"><code id="highlighting" class="language-${prismLanguage}"></code></pre>
             <textarea
                 id="editor"
                 spellcheck="false"
@@ -229,9 +240,9 @@ export const LightEditor: React.FC<LightEditorProps> = ({
             const text = editor.value;
 
             if (text[text.length - 1] === '\\n') {
-                highlighting.innerHTML = Prism.highlight(text + ' ', Prism.languages.${language} || Prism.languages.javascript, '${language}');
+                highlighting.innerHTML = Prism.highlight(text + ' ', Prism.languages.${prismLanguage} || Prism.languages.javascript, '${prismLanguage}');
             } else {
-                highlighting.innerHTML = Prism.highlight(text, Prism.languages.${language} || Prism.languages.javascript, '${language}');
+                highlighting.innerHTML = Prism.highlight(text, Prism.languages.${prismLanguage} || Prism.languages.javascript, '${prismLanguage}');
             }
 
             updateLineNumbers();
