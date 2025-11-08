@@ -1,6 +1,6 @@
 import React from 'react';
 import { Platform } from 'react-native';
-import { MonacoEditor } from './MonacoEditor';
+import { CodeMirrorEditor } from './CodeMirrorEditor';
 import { EnhancedCodeEditor } from './EnhancedCodeEditor';
 
 interface SmartEditorProps {
@@ -17,11 +17,10 @@ interface SmartEditorProps {
 /**
  * Smart Editor - Uses platform-specific editor for best experience
  * - Android: Native TextInput (EnhancedCodeEditor) - Better keyboard support
- * - iOS/Web: Monaco Editor - Advanced features and syntax highlighting
+ * - iOS/Web: CodeMirror Editor - Lightweight with syntax highlighting
  */
 export const SmartEditor: React.FC<SmartEditorProps> = (props) => {
-  // Use native editor on Android due to WebView keyboard issues
-  // Use Monaco on iOS for advanced features
+  // Use native editor on Android for reliable keyboard
   if (Platform.OS === 'android') {
     return (
       <EnhancedCodeEditor
@@ -35,8 +34,11 @@ export const SmartEditor: React.FC<SmartEditorProps> = (props) => {
     );
   }
 
+  // Use CodeMirror on iOS - lighter and better mobile support than Monaco
+  const cmTheme = props.theme === 'vs-light' ? 'light' : 'dark';
+
   return (
-    <MonacoEditor
+    <CodeMirrorEditor
       filePath={props.filePath}
       fileName={props.fileName}
       initialContent={props.initialContent}
@@ -44,7 +46,7 @@ export const SmartEditor: React.FC<SmartEditorProps> = (props) => {
       onContentChange={props.onContentChange}
       onSave={props.onSave}
       readOnly={props.readOnly}
-      theme={props.theme}
+      theme={cmTheme}
     />
   );
 };
