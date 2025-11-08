@@ -31,6 +31,20 @@ export const LightEditor: React.FC<LightEditorProps> = ({
 
   useEffect(() => {
     setContent(initialContent);
+    // Update editor content when initialContent changes
+    if (webViewRef.current && initialContent) {
+      const escapedContent = initialContent
+        .replace(/\\/g, '\\\\')
+        .replace(/`/g, '\\`')
+        .replace(/\$/g, '\\$');
+      webViewRef.current.injectJavaScript(`
+        if (window.editorReady && document.getElementById('editor')) {
+          document.getElementById('editor').value = \`${escapedContent}\`;
+          updateHighlighting();
+        }
+        true;
+      `);
+    }
   }, [initialContent]);
 
   const handleMessage = (event: any) => {
@@ -180,7 +194,7 @@ export const LightEditor: React.FC<LightEditorProps> = ({
                 autocomplete="off"
                 autocorrect="off"
                 ${readOnly ? 'readonly' : ''}
-            >${initialContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+            ></textarea>
         </div>
     </div>
 
@@ -252,8 +266,15 @@ export const LightEditor: React.FC<LightEditorProps> = ({
             }
         });
 
-        // Initial highlighting
-        updateHighlighting();
+        // Set initial content
+        const initialContent = ${JSON.stringify(initialContent)};
+        if (initialContent) {
+            editor.value = initialContent;
+            updateHighlighting();
+        }
+
+        // Mark editor as ready
+        window.editorReady = true;
 
         // Notify ready
         window.ReactNativeWebView.postMessage(JSON.stringify({type: 'ready'}));
