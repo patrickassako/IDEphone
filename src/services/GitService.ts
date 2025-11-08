@@ -1,4 +1,5 @@
 import git from 'isomorphic-git';
+import http from 'isomorphic-git/http/web';
 import * as FileSystem from 'expo-file-system/legacy';
 import { GitStatus, GitConfig } from '../types';
 
@@ -96,10 +97,12 @@ export class GitService {
     try {
       await git.clone({
         fs,
+        http,
         dir,
         url,
         depth: depth || 1,
         singleBranch: true,
+        corsProxy: 'https://cors.isomorphic-git.org',
       });
     } catch (error) {
       console.error('Error cloning repository:', error);
@@ -160,9 +163,11 @@ export class GitService {
     try {
       await git.push({
         fs,
+        http,
         dir,
         remote,
         ref: branch,
+        corsProxy: 'https://cors.isomorphic-git.org',
       });
     } catch (error) {
       console.error('Error pushing:', error);
@@ -174,9 +179,11 @@ export class GitService {
     try {
       await git.pull({
         fs,
+        http,
         dir,
         ref: branch,
         singleBranch: true,
+        corsProxy: 'https://cors.isomorphic-git.org',
         author: {
           name: this.config.name,
           email: this.config.email,

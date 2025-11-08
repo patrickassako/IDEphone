@@ -10,6 +10,7 @@ import {
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
 import { FileSystemService } from '../services/FileSystemService';
 import { Repository } from '../types';
 import { useEditor } from '../contexts/EditorContext';
@@ -96,7 +97,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
     try {
       const repoName = cloneUrl.split('/').pop()?.replace('.git', '') || 'cloned-repo';
       const baseDir = FileSystemService.getBaseDir();
-      const projectPath = baseDir + repoName;
+      const projectPath = baseDir + (baseDir.endsWith('/') ? '' : '/') + repoName;
 
       await GitService.clone(cloneUrl, projectPath);
 
@@ -114,7 +115,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
         { text: 'OK', onPress: () => handleOpenProject(newRepo) },
       ]);
     } catch (error) {
-      Alert.alert('Error', 'Failed to clone repository');
+      console.error('Error cloning repository:', error);
+      Alert.alert('Error', `Failed to clone repository: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -145,6 +147,55 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
         },
       ]
     );
+  };
+
+  const handleImportFile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: '*/*',
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled) {
+        return;
+      }
+
+      const file = result.assets[0];
+      const baseDir = FileSystemService.getBaseDir();
+
+      // Create a project folder for imported files if it doesn't exist
+      const importedProjectName = 'Imported Files';
+      const importedProjectPath = baseDir + importedProjectName;
+
+      try {
+        await FileSystemService.createDirectory(baseDir, importedProjectName);
+      } catch (error) {
+        // Directory might already exist, that's ok
+      }
+
+      // Copy the file to the imported project folder
+      const fileName = file.name;
+      const destPath = importedProjectPath + '/' + fileName;
+
+      await FileSystemService.copyItem(file.uri, destPath);
+
+      Alert.alert('Success', `File "${fileName}" imported successfully`, [
+        {
+          text: 'OK',
+          onPress: () => {
+            loadProjects();
+            const repo: Repository = {
+              name: importedProjectName,
+              path: importedProjectPath,
+            };
+            handleOpenProject(repo);
+          },
+        },
+      ]);
+    } catch (error) {
+      console.error('Error importing file:', error);
+      Alert.alert('Error', 'Failed to import file');
+    }
   };
 
   const renderProject = ({ item }: { item: Repository }) => (
@@ -186,6 +237,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
         >
           <Ionicons name="cloud-download" size={24} color="#4A90E2" />
           <Text style={styles.actionText}>Clone Repository</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={handleImportFile}
+        >
+          <Ionicons name="document-attach" size={24} color="#4A90E2" />
+          <Text style={styles.actionText}>Open File</Text>
         </TouchableOpacity>
       </View>
 
