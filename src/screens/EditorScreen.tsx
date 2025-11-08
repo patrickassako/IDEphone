@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Dimensions, TouchableOpacity, Text } from 'react-native';
+import { View, StyleSheet, Dimensions, TouchableOpacity, Text, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FileBrowser } from '../components/FileBrowser';
 import { SmartEditor } from '../components/SmartEditor';
@@ -9,12 +9,15 @@ import { AIAssistantDrawer } from '../components/AIAssistantDrawer';
 import { CodeActionMenu, CodeAction } from '../components/CodeActionMenu';
 import { AIResultModal } from '../components/AIResultModal';
 import { FilePreviewModal } from '../components/FilePreviewModal';
+import { ProjectGeneratorModal, ProjectConfig } from '../components/ProjectGeneratorModal';
+import { StreamingConsole, StreamMessage, FileTreeNode } from '../components/StreamingConsole';
 import { useEditor } from '../contexts/EditorContext';
 import { FileItem, TabItem } from '../types';
 import { FileSystemService } from '../services/FileSystemService';
 import { PreferencesService } from '../services/PreferencesService';
 import { AIService, AIContextBuilder } from '../services/ai';
 import { MultiFileGenerator, GeneratedFile } from '../services/ai/MultiFileGenerator';
+import { StreamingProjectGenerator } from '../services/ai/StreamingProjectGenerator';
 
 const { width } = Dimensions.get('window');
 
@@ -42,6 +45,14 @@ export const EditorScreen: React.FC = () => {
   const [showFilePreview, setShowFilePreview] = useState(false);
   const [generatedFiles, setGeneratedFiles] = useState<GeneratedFile[]>([]);
   const [generationSummary, setGenerationSummary] = useState<string>('');
+
+  // Project Generator states
+  const [showProjectGenerator, setShowProjectGenerator] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [streamMessages, setStreamMessages] = useState<StreamMessage[]>([]);
+  const [fileTree, setFileTree] = useState<FileTreeNode[]>([]);
+  const [generationProgress, setGenerationProgress] = useState(0);
+  const [estimatedTime, setEstimatedTime] = useState<number>();
 
   const { tabs, activeTabId, addTab, removeTab, updateTab, setActiveTab, getActiveTab } =
     useEditor();
@@ -262,6 +273,95 @@ export const EditorScreen: React.FC = () => {
     }
   };
 
+  const handleGenerateProject = async (config: ProjectConfig) => {
+    // Reset states
+    setStreamMessages([]);
+    setFileTree([]);
+    setGenerationProgress(0);
+    setIsGenerating(true);
+
+    // Create generator with event callbacks
+    const generator = new StreamingProjectGenerator({
+      onProgress: (percent, message) => {
+        setGenerationProgress(percent);
+        // Calculate estimated time (very rough)
+        if (percent > 0 && percent < 100) {
+          const remaining = Math.round((100 - percent) / 10);
+          setEstimatedTime(remaining);
+        }
+      },
+      onMessage: (message) => {
+        setStreamMessages((prev) => [...prev, message]);
+      },
+      onFileStart: (path) => {
+        // File start handled in onMessage
+      },
+      onFileComplete: (path, content) => {
+        // File complete handled in onMessage
+      },
+      onDirectoryCreate: (path) => {
+        // Directory handled in onMessage
+      },
+      onTreeUpdate: (tree) => {
+        setFileTree(tree);
+      },
+      onComplete: async (files, summary) => {
+        setEstimatedTime(undefined);
+        setIsGenerating(false);
+
+        // Create all files
+        for (const file of files) {
+          try {
+            const currentDir = FileSystemService.getCurrentDirectory();
+            const fullPath = `${currentDir}/${file.path}`;
+
+            // Create directory if needed
+            const dirPath = fullPath.substring(0, fullPath.lastIndexOf('/'));
+            await FileSystemService.ensureDirectoryExists(dirPath);
+
+            // Write file
+            await FileSystemService.writeFile(fullPath, file.content);
+
+            // Open in tab
+            const newTab: TabItem = {
+              id: `${fullPath}-${Date.now()}`,
+              name: file.path.split('/').pop() || file.path,
+              path: fullPath,
+              content: file.content,
+              isDirty: false,
+              language: file.language || FileSystemService.getLanguageFromFileName(file.path),
+            };
+
+            addTab(newTab);
+          } catch (error) {
+            console.error(`Failed to create file ${file.path}:`, error);
+          }
+        }
+
+        // Show success (could add confetti here later!)
+        console.log('Project generated successfully!', summary);
+
+        // Close generator modal after a delay
+        setTimeout(() => {
+          setShowProjectGenerator(false);
+        }, 2000);
+      },
+      onError: (error) => {
+        setIsGenerating(false);
+        setEstimatedTime(undefined);
+        console.error('Generation error:', error);
+        alert(`Error: ${error}`);
+      },
+    });
+
+    // Start generation
+    try {
+      await generator.generateProject(config);
+    } catch (error) {
+      console.error('Failed to generate project:', error);
+    }
+  };
+
   const activeTab = getActiveTab();
 
   const showBrowser = layoutMode === 'browser-only' || layoutMode === 'split';
@@ -318,6 +418,16 @@ export const EditorScreen: React.FC = () => {
               </TouchableOpacity>
             )}
           </>
+        )}
+
+        {aiEnabled && (
+          <TouchableOpacity
+            style={[styles.toolbarButton, styles.projectButton]}
+            onPress={() => setShowProjectGenerator(true)}
+          >
+            <Ionicons name="rocket" size={20} color="#2EAADC" />
+            <Text style={[styles.toolbarButtonText, styles.projectButtonText]}>New Project</Text>
+          </TouchableOpacity>
         )}
       </View>
 
@@ -422,6 +532,29 @@ export const EditorScreen: React.FC = () => {
         onCreateFiles={handleCreateFiles}
         onClose={() => setShowFilePreview(false)}
       />
+
+      {/* Project Generator Modal */}
+      {!isGenerating ? (
+        <ProjectGeneratorModal
+          visible={showProjectGenerator}
+          onClose={() => setShowProjectGenerator(false)}
+          onGenerate={handleGenerateProject}
+        />
+      ) : (
+        <Modal transparent visible={showProjectGenerator} animationType="none">
+          <View style={styles.streamingContainer}>
+            <View style={styles.streamingBackdrop} />
+            <View style={styles.streamingContent}>
+              <StreamingConsole
+                messages={streamMessages}
+                fileTree={fileTree}
+                progress={generationProgress}
+                estimatedTime={estimatedTime}
+              />
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 };
@@ -462,6 +595,37 @@ const styles = StyleSheet.create({
   },
   aiButtonText: {
     color: '#9F7AEA',
+  },
+  projectButton: {
+    borderColor: '#2EAADC',
+  },
+  projectButtonText: {
+    color: '#2EAADC',
+  },
+  streamingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  streamingBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+  },
+  streamingContent: {
+    width: '95%',
+    maxHeight: '90%',
+    backgroundColor: '#1A1A1A',
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 20,
   },
   mainContent: {
     flex: 1,
