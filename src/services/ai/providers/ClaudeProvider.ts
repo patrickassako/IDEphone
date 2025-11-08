@@ -26,6 +26,7 @@ export class ClaudeProvider implements AIProvider {
   }
 
   async validateApiKey(apiKey: string): Promise<boolean> {
+    console.log('[Claude] Validating API key...');
     try {
       const response = await fetch(`${this.baseUrl}/messages`, {
         method: 'POST',
@@ -41,10 +42,32 @@ export class ClaudeProvider implements AIProvider {
         }),
       });
 
-      return response.ok;
-    } catch (error) {
-      console.error('API key validation failed:', error);
-      return false;
+      console.log('[Claude] Response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[Claude] API error:', errorText);
+
+        // Try to parse error message
+        try {
+          const errorData = JSON.parse(errorText);
+          throw new Error(errorData.error?.message || `API error: ${response.status}`);
+        } catch (parseError) {
+          throw new Error(`Invalid API key or API error (${response.status})`);
+        }
+      }
+
+      console.log('[Claude] API key is valid!');
+      return true;
+    } catch (error: any) {
+      console.error('[Claude] Validation failed:', error);
+
+      // Re-throw with a clear message
+      if (error.message) {
+        throw error;
+      }
+
+      throw new Error('Network error. Please check your internet connection and try again.');
     }
   }
 

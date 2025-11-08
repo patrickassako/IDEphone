@@ -43,22 +43,20 @@ export const SettingsScreen: React.FC = () => {
   }, []);
 
   const handleSaveAIApiKey = async () => {
+    console.log('[Settings] Save AI API Key clicked');
     if (!aiApiKey.trim()) {
       Alert.alert('Error', 'Please enter an API key');
       return;
     }
 
     setIsValidatingKey(true);
+    console.log('[Settings] Validating key for provider:', aiProvider);
 
     try {
-      // Validate API key
-      const isValid = await AIService.validateApiKey(aiApiKey, aiProvider);
+      // Validate API key (will throw error if invalid)
+      await AIService.validateApiKey(aiApiKey, aiProvider);
 
-      if (!isValid) {
-        Alert.alert('Error', 'Invalid API key. Please check and try again.');
-        setIsValidatingKey(false);
-        return;
-      }
+      console.log('[Settings] API key validated successfully');
 
       // Save configuration
       await AIService.configure({
@@ -78,6 +76,7 @@ export const SettingsScreen: React.FC = () => {
 
       setAiApiKey(''); // Clear the input for security
     } catch (error: any) {
+      console.error('[Settings] Validation error:', error);
       Alert.alert('Error', error.message || 'Failed to validate API key');
     } finally {
       setIsValidatingKey(false);

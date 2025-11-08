@@ -26,31 +26,55 @@ export class GeminiProvider implements AIProvider {
   }
 
   async validateApiKey(apiKey: string): Promise<boolean> {
+    console.log('[Gemini] Validating API key...');
     try {
-      const response = await fetch(
-        `${this.baseUrl}/models/${this.model}:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [{ text: 'Hi' }],
-              },
-            ],
-            generationConfig: {
-              maxOutputTokens: 10,
-            },
-          }),
-        }
-      );
+      const url = `${this.baseUrl}/models/${this.model}:generateContent?key=${apiKey}`;
+      console.log('[Gemini] Request URL:', url);
 
-      return response.ok;
-    } catch (error) {
-      console.error('API key validation failed:', error);
-      return false;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [{ text: 'Hi' }],
+            },
+          ],
+          generationConfig: {
+            maxOutputTokens: 10,
+          },
+        }),
+      });
+
+      console.log('[Gemini] Response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[Gemini] API error:', errorText);
+
+        // Try to parse error message
+        try {
+          const errorData = JSON.parse(errorText);
+          const errorMessage = errorData.error?.message || `API error: ${response.status}`;
+          throw new Error(errorMessage);
+        } catch (parseError) {
+          throw new Error(`Invalid API key or API error (${response.status})`);
+        }
+      }
+
+      console.log('[Gemini] API key is valid!');
+      return true;
+    } catch (error: any) {
+      console.error('[Gemini] Validation failed:', error);
+
+      // Re-throw with a clear message
+      if (error.message) {
+        throw error;
+      }
+
+      throw new Error('Network error. Please check your internet connection and try again.');
     }
   }
 
