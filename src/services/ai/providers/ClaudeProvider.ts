@@ -9,7 +9,7 @@ import { AIConfig, AIContext, AIResponse, StreamCallback, CodeBlock } from '../t
 export class ClaudeProvider implements AIProvider {
   readonly name = 'Claude';
   private apiKey: string = '';
-  private model: string = 'claude-sonnet-4-20250514';
+  private model: string = 'claude-3-5-sonnet-20241022';
   private maxTokens: number = 4096;
   private temperature: number = 0.7;
   private baseUrl: string = 'https://api.anthropic.com/v1';
