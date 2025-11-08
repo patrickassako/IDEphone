@@ -120,6 +120,7 @@ export const LightEditor: React.FC<LightEditorProps> = ({
             user-select: none;
             overflow: hidden;
             min-width: 50px;
+            white-space: pre;
         }
 
         #editor-wrapper {
