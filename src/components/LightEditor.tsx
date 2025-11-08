@@ -161,6 +161,8 @@ export const LightEditor: React.FC<LightEditorProps> = ({
             z-index: 2;
             caret-color: ${theme === 'dark' ? '#ffffff' : '#000000'};
             -webkit-text-fill-color: transparent;
+            user-select: text;
+            -webkit-user-select: text;
         }
 
         #highlight {
@@ -208,7 +210,7 @@ export const LightEditor: React.FC<LightEditorProps> = ({
                 autocapitalize="off"
                 autocomplete="off"
                 autocorrect="off"
-                ${readOnly ? 'readonly' : ''}
+                ${readOnly ? 'readonly inputmode="none"' : ''}
             ></textarea>
         </div>
     </div>
@@ -281,26 +283,19 @@ export const LightEditor: React.FC<LightEditorProps> = ({
             }
         });
 
-        // Text selection detection
-        let selectionTimeout;
-        editor.addEventListener('mouseup', () => {
-            clearTimeout(selectionTimeout);
-            selectionTimeout = setTimeout(() => {
-                const start = editor.selectionStart;
-                const end = editor.selectionEnd;
-                if (start !== end) {
-                    const selectedText = editor.value.substring(start, end);
-                    window.ReactNativeWebView.postMessage(JSON.stringify({
-                        type: 'textSelection',
-                        selectedText: selectedText,
-                        start: start,
-                        end: end
-                    }));
-                }
-            }, 100);
-        });
+        // Prevent keyboard in readonly mode
+        const isReadOnly = ${readOnly};
+        if (isReadOnly) {
+            // Prevent focus to avoid keyboard opening
+            editor.addEventListener('focus', (e) => {
+                e.preventDefault();
+                editor.blur();
+            });
+        }
 
-        editor.addEventListener('touchend', () => {
+        // Text selection detection (works even in readonly)
+        let selectionTimeout;
+        const handleSelection = () => {
             clearTimeout(selectionTimeout);
             selectionTimeout = setTimeout(() => {
                 const start = editor.selectionStart;
@@ -315,7 +310,11 @@ export const LightEditor: React.FC<LightEditorProps> = ({
                     }));
                 }
             }, 100);
-        });
+        };
+
+        editor.addEventListener('mouseup', handleSelection);
+        editor.addEventListener('touchend', handleSelection);
+        editor.addEventListener('selectionchange', handleSelection);
 
         // Set initial content
         const initialContent = ${JSON.stringify(initialContent)};
@@ -344,6 +343,8 @@ export const LightEditor: React.FC<LightEditorProps> = ({
             <View style={styles.readOnlyBadge}>
               <Ionicons name="lock-closed" size={12} color="#FFD700" />
               <Text style={styles.readOnlyText}>Read-only</Text>
+              <Ionicons name="hand-left-outline" size={12} color="#4A90E2" style={{ marginLeft: 8 }} />
+              <Text style={styles.selectionHint}>Select for AI</Text>
             </View>
           )}
         </View>
@@ -439,6 +440,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: 'bold',
     marginLeft: 4,
+  },
+  selectionHint: {
+    color: '#4A90E2',
+    fontSize: 10,
+    marginLeft: 4,
+    fontStyle: 'italic',
   },
   toolbarButtons: {
     flexDirection: 'row',
