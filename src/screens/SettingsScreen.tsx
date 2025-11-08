@@ -7,6 +7,8 @@ import {
   TextInput,
   Alert,
   ScrollView,
+  Platform,
+  Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -18,6 +20,9 @@ export const SettingsScreen: React.FC = () => {
   const [githubToken, setGithubToken] = useState('');
   const [selectedTheme, setSelectedTheme] = useState<EditorTheme>(
     PreferencesService.getEditorTheme()
+  );
+  const [androidSyntaxHighlighting, setAndroidSyntaxHighlighting] = useState(
+    PreferencesService.getUseSyntaxHighlightingOnAndroid()
   );
 
   const handleSaveGitHubToken = () => {
@@ -40,6 +45,24 @@ export const SettingsScreen: React.FC = () => {
     setSelectedTheme(theme);
     PreferencesService.setEditorTheme(theme);
     Alert.alert('Success', `Editor theme changed to ${theme}. Reopen files to see the change.`);
+  };
+
+  const handleAndroidSyntaxToggle = (value: boolean) => {
+    setAndroidSyntaxHighlighting(value);
+    PreferencesService.setUseSyntaxHighlightingOnAndroid(value);
+    if (value) {
+      Alert.alert(
+        'Android Syntax Highlighting Enabled',
+        'You will now have syntax highlighting on Android. Note: keyboard behavior may be less stable than native editor. Reopen files to see changes.',
+        [{ text: 'OK' }]
+      );
+    } else {
+      Alert.alert(
+        'Android Syntax Highlighting Disabled',
+        'You will use the native editor on Android with perfect keyboard but no syntax highlighting. Reopen files to see changes.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   return (
@@ -80,8 +103,31 @@ export const SettingsScreen: React.FC = () => {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Editor Preferences</Text>
         <Text style={styles.description}>
-          Choose your preferred editor theme (Monaco Editor)
+          Choose your preferred editor theme and settings
         </Text>
+
+        {Platform.OS === 'android' && (
+          <>
+            <View style={styles.switchContainer}>
+              <View style={styles.switchInfo}>
+                <Text style={styles.switchTitle}>Syntax Highlighting (Android)</Text>
+                <Text style={styles.switchDescription}>
+                  Enable color highlighting. May affect keyboard stability.
+                </Text>
+              </View>
+              <Switch
+                value={androidSyntaxHighlighting}
+                onValueChange={handleAndroidSyntaxToggle}
+                trackColor={{ false: '#767577', true: '#4A90E2' }}
+                thumbColor={androidSyntaxHighlighting ? '#FFF' : '#f4f3f4'}
+              />
+            </View>
+            <Text style={styles.warningText}>
+              ⚠️ If you experience keyboard issues, disable this option
+            </Text>
+          </>
+        )}
+
         <Text style={styles.label}>Theme</Text>
 
         <TouchableOpacity
@@ -252,5 +298,34 @@ const styles = StyleSheet.create({
   themeDescription: {
     color: '#AAA',
     fontSize: 12,
+  },
+  switchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    backgroundColor: '#2D2D2D',
+    borderRadius: 5,
+    marginBottom: 10,
+  },
+  switchInfo: {
+    flex: 1,
+    marginRight: 12,
+  },
+  switchTitle: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  switchDescription: {
+    color: '#AAA',
+    fontSize: 12,
+  },
+  warningText: {
+    color: '#FFA500',
+    fontSize: 12,
+    marginBottom: 15,
+    fontStyle: 'italic',
   },
 });
