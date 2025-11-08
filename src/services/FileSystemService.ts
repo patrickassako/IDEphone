@@ -25,8 +25,8 @@ export class FileSystemService {
             name: item,
             path: itemPath,
             type: info.isDirectory ? 'directory' : 'file',
-            size: info.size,
-            modifiedTime: info.modificationTime,
+            size: info.exists ? (info as any).size || 0 : 0,
+            modifiedTime: info.exists ? (info as any).modificationTime || 0 : 0,
             isExpanded: false,
             children: info.isDirectory ? [] : undefined,
           };
