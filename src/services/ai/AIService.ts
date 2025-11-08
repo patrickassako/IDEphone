@@ -6,6 +6,7 @@
 
 import { AIProvider } from './providers/AIProvider';
 import { ClaudeProvider } from './providers/ClaudeProvider';
+import { GeminiProvider } from './providers/GeminiProvider';
 import { AIConfig, AIContext, AIResponse, AIProviderType, StreamCallback } from './types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -191,8 +192,7 @@ class AIServiceClass {
         // TODO: Implement OpenAI provider
         throw new Error('OpenAI provider not yet implemented');
       case 'gemini':
-        // TODO: Implement Gemini provider
-        throw new Error('Gemini provider not yet implemented');
+        return new GeminiProvider();
       default:
         throw new Error(`Unknown provider type: ${type}`);
     }

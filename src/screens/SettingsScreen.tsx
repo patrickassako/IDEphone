@@ -69,9 +69,10 @@ export const SettingsScreen: React.FC = () => {
       await AIService.setEnabled(true);
       setAiEnabled(true);
 
+      const providerName = aiProvider === 'claude' ? 'Claude' : aiProvider === 'gemini' ? 'Gemini' : aiProvider;
       Alert.alert(
         'Success',
-        `${aiProvider === 'claude' ? 'Claude' : aiProvider} AI configured successfully! You can now use AI features in the editor.`,
+        `${providerName} AI configured successfully! You can now use AI features in the editor.`,
         [{ text: 'OK' }]
       );
 
@@ -204,7 +205,7 @@ export const SettingsScreen: React.FC = () => {
             <Text style={styles.switchTitle}>Enable AI Assistant</Text>
             <Text style={styles.switchDescription}>
               {AIService.isConfigured()
-                ? `Using ${aiProvider === 'claude' ? 'Claude' : aiProvider} AI`
+                ? `Using ${aiProvider === 'claude' ? 'Claude' : aiProvider === 'gemini' ? 'Gemini' : aiProvider} AI`
                 : 'Configure API key to enable'}
             </Text>
           </View>
@@ -237,6 +238,26 @@ export const SettingsScreen: React.FC = () => {
           </View>
         </TouchableOpacity>
 
+        <TouchableOpacity
+          style={[
+            styles.themeOption,
+            aiProvider === 'gemini' && styles.themeOptionSelected,
+          ]}
+          onPress={() => setAiProvider('gemini')}
+        >
+          <Ionicons
+            name={aiProvider === 'gemini' ? 'radio-button-on' : 'radio-button-off'}
+            size={20}
+            color="#4A90E2"
+          />
+          <View style={styles.themeInfo}>
+            <Text style={styles.themeTitle}>Gemini (Google)</Text>
+            <Text style={styles.themeDescription}>
+              Free tier available. 1M context. Great alternative.
+            </Text>
+          </View>
+        </TouchableOpacity>
+
         <Text style={styles.label}>API Key</Text>
         <Text style={styles.description}>
           {aiProvider === 'claude' && 'Get your key at: console.anthropic.com'}
@@ -250,7 +271,7 @@ export const SettingsScreen: React.FC = () => {
               ? 'sk-ant-api03-...'
               : aiProvider === 'openai'
               ? 'sk-...'
-              : 'AI...'
+              : 'AIza...'
           }
           placeholderTextColor="#666"
           value={aiApiKey}
