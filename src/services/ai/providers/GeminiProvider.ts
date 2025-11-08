@@ -9,10 +9,10 @@ import { AIConfig, AIContext, AIResponse, StreamCallback, CodeBlock } from '../t
 export class GeminiProvider implements AIProvider {
   readonly name = 'Gemini';
   private apiKey: string = '';
-  private model: string = 'gemini-1.5-flash-latest';
+  private model: string = 'gemini-1.5-flash';
   private maxTokens: number = 4096;
   private temperature: number = 0.7;
-  private baseUrl: string = 'https://generativelanguage.googleapis.com/v1beta';
+  private baseUrl: string = 'https://generativelanguage.googleapis.com/v1';
 
   initialize(config: AIConfig): void {
     this.apiKey = config.apiKey;
