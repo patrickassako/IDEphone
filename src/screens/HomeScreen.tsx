@@ -23,6 +23,8 @@ import { GitService } from '../services/GitService';
 import { ProjectGeneratorModal, ProjectConfig } from '../components/ProjectGeneratorModal';
 import { StreamingConsole, StreamMessage, FileTreeNode } from '../components/StreamingConsole';
 import { StreamingProjectGenerator } from '../services/ai/StreamingProjectGenerator';
+import { ProjectSuccessScreen } from '../components/ProjectSuccessScreen';
+import { GeneratedFile } from '../services/ai/MultiFileGenerator';
 
 interface HomeScreenProps {
   onProjectSelect: (repo: Repository) => void;
@@ -44,6 +46,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
   const [fileTree, setFileTree] = useState<FileTreeNode[]>([]);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [estimatedTime, setEstimatedTime] = useState<number>();
+  const [showSuccessScreen, setShowSuccessScreen] = useState(false);
+  const [completedProjectName, setCompletedProjectName] = useState('');
+  const [completedFiles, setCompletedFiles] = useState<GeneratedFile[]>([]);
+  const [completedConfig, setCompletedConfig] = useState<ProjectConfig | null>(null);
+  const [completedSummary, setCompletedSummary] = useState('');
+  const [completedRepo, setCompletedRepo] = useState<Repository | null>(null);
 
   useEffect(() => {
     loadProjects();
@@ -548,22 +556,36 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
           console.log('Summary:', summary);
 
           try {
+            // Generate project name from description
+            const projectName = config.description
+              .split(' ')
+              .slice(0, 3)
+              .join('-')
+              .toLowerCase()
+              .replace(/[^a-z0-9-]/g, '-') || 'ai-project';
+
             // Create project directory
             const baseDir = FileSystemService.getBaseDir();
-            const projectName = config.description.split(' ').slice(0, 3).join('-').toLowerCase().replace(/[^a-z0-9-]/g, '-') || 'ai-project';
-            const projectPath = await FileSystemService.createDirectory(baseDir, projectName);
+            const projectPath = `${baseDir}/${projectName}`;
+
+            // Ensure project directory exists
+            await FileSystemService.ensureDirectoryExists(projectPath);
+
+            console.log(`📁 Creating project in: ${projectPath}`);
 
             // Initialize git repository if requested
             if (config.git) {
               await GitService.init(projectPath);
             }
 
-            // Create all files
+            // Create all files inside the project directory
             for (const file of files) {
               const fullPath = `${projectPath}/${file.path}`;
-              const dirPath = fullPath.substring(0, fullPath.lastIndexOf('/'));
 
-              // Ensure directory exists
+              console.log(`  Creating file: ${fullPath}`);
+
+              // Ensure parent directory exists
+              const dirPath = fullPath.substring(0, fullPath.lastIndexOf('/'));
               if (dirPath !== projectPath) {
                 await FileSystemService.ensureDirectoryExists(dirPath);
               }
@@ -577,20 +599,22 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
               path: projectPath,
             };
 
-            // Close generator modal
+            // Store completion data for success screen
+            setCompletedProjectName(projectName);
+            setCompletedFiles(files);
+            setCompletedConfig(config);
+            setCompletedSummary(summary);
+            setCompletedRepo(newRepo);
+
+            // Transition to success screen
             setTimeout(() => {
               setIsGenerating(false);
-              setShowProjectGenerator(false);
+              setShowSuccessScreen(true);
               loadProjects();
-
-              // Show success and open project
-              Alert.alert('Success', summary, [
-                { text: 'OK', onPress: () => handleOpenProject(newRepo) },
-              ]);
-            }, 2000);
+            }, 1500);
           } catch (error: any) {
             console.error('Error creating files:', error);
-            Alert.alert('Error', 'Failed to create project files');
+            Alert.alert('Error', 'Failed to create project files: ' + error.message);
             setIsGenerating(false);
           }
         },
@@ -601,8 +625,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
         },
       });
 
-      // Run generation with simulation mode enabled (for testing UI)
-      await generator.generateProject(config, true); // Pass true for simulation mode
+      // Run generation with real AI (set to false for real AI, true for simulation)
+      await generator.generateProject(config, false); // false = real AI, true = simulation mode
     } catch (error: any) {
       console.error('Project generation failed:', error);
       Alert.alert('Error', error.message || 'Failed to generate project');
@@ -785,13 +809,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
       </Modal>
 
       {/* AI Project Generator Modal */}
-      {!isGenerating ? (
+      {!isGenerating && !showSuccessScreen ? (
         <ProjectGeneratorModal
           visible={showProjectGenerator}
           onClose={() => setShowProjectGenerator(false)}
           onGenerate={handleGenerateProject}
         />
-      ) : (
+      ) : isGenerating ? (
         <Modal transparent visible={showProjectGenerator} animationType="none">
           <View style={styles.streamingContainer}>
             <View style={styles.streamingContent}>
@@ -804,7 +828,31 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
             </View>
           </View>
         </Modal>
-      )}
+      ) : showSuccessScreen && completedConfig ? (
+        <Modal transparent visible={showProjectGenerator} animationType="none">
+          <View style={styles.streamingContainer}>
+            <View style={styles.streamingContent}>
+              <ProjectSuccessScreen
+                projectName={completedProjectName}
+                files={completedFiles}
+                config={completedConfig}
+                summary={completedSummary}
+                onOpenProject={() => {
+                  setShowProjectGenerator(false);
+                  setShowSuccessScreen(false);
+                  if (completedRepo) {
+                    handleOpenProject(completedRepo);
+                  }
+                }}
+                onClose={() => {
+                  setShowProjectGenerator(false);
+                  setShowSuccessScreen(false);
+                }}
+              />
+            </View>
+          </View>
+        </Modal>
+      ) : null}
     </View>
   );
 };
