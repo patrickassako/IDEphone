@@ -51,9 +51,21 @@ export class ClaudeProvider implements AIProvider {
         // Try to parse error message
         try {
           const errorData = JSON.parse(errorText);
-          throw new Error(errorData.error?.message || `API error: ${response.status}`);
+          const errorMessage = errorData.error?.message || `API error: ${response.status}`;
+
+          // Show user-friendly error messages
+          if (errorMessage.includes('credit balance is too low')) {
+            throw new Error('Claude API key valid but no credits. Add credits at console.anthropic.com/settings/billing');
+          } else if (response.status === 401) {
+            throw new Error('Invalid Claude API key');
+          }
+
+          throw new Error(errorMessage);
         } catch (parseError) {
-          throw new Error(`Invalid API key or API error (${response.status})`);
+          if (response.status === 401) {
+            throw new Error('Invalid Claude API key');
+          }
+          throw new Error(`Claude API error (${response.status})`);
         }
       }
 

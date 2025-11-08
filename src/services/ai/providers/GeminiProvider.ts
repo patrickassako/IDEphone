@@ -9,7 +9,7 @@ import { AIConfig, AIContext, AIResponse, StreamCallback, CodeBlock } from '../t
 export class GeminiProvider implements AIProvider {
   readonly name = 'Gemini';
   private apiKey: string = '';
-  private model: string = 'gemini-1.5-flash';
+  private model: string = 'gemini-1.5-flash-latest';
   private maxTokens: number = 4096;
   private temperature: number = 0.7;
   private baseUrl: string = 'https://generativelanguage.googleapis.com/v1beta';
@@ -58,9 +58,22 @@ export class GeminiProvider implements AIProvider {
         try {
           const errorData = JSON.parse(errorText);
           const errorMessage = errorData.error?.message || `API error: ${response.status}`;
-          throw new Error(errorMessage);
+
+          // Show user-friendly error messages
+          if (response.status === 400 && errorMessage.includes('API_KEY_INVALID')) {
+            throw new Error('Invalid Gemini API key. Get a free key at aistudio.google.com/apikey');
+          } else if (response.status === 403) {
+            throw new Error('Gemini API access denied. Check your key or quota at aistudio.google.com');
+          } else if (response.status === 429) {
+            throw new Error('Gemini API quota exceeded. Wait a moment or upgrade your plan.');
+          }
+
+          throw new Error(`Gemini: ${errorMessage}`);
         } catch (parseError) {
-          throw new Error(`Invalid API key or API error (${response.status})`);
+          if (response.status === 400) {
+            throw new Error('Invalid Gemini API key');
+          }
+          throw new Error(`Gemini API error (${response.status})`);
         }
       }
 
