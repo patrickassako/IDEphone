@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { GitService } from '../services/GitService';
 import { PreferencesService, EditorTheme } from '../services/PreferencesService';
+import { AIService, AIProviderType } from '../services/ai';
 
 export const SettingsScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -24,6 +25,98 @@ export const SettingsScreen: React.FC = () => {
   const [androidSyntaxHighlighting, setAndroidSyntaxHighlighting] = useState(
     PreferencesService.getUseSyntaxHighlightingOnAndroid()
   );
+
+  // AI Settings
+  const [aiApiKey, setAiApiKey] = useState('');
+  const [aiProvider, setAiProvider] = useState<AIProviderType>('claude');
+  const [aiEnabled, setAiEnabled] = useState(false);
+  const [isValidatingKey, setIsValidatingKey] = useState(false);
+
+  useEffect(() => {
+    // Load AI settings on mount
+    const loadAISettings = async () => {
+      const enabled = await AIService.isEnabled();
+      setAiEnabled(enabled);
+      setAiProvider(AIService.getProviderType());
+    };
+    loadAISettings();
+  }, []);
+
+  const handleSaveAIApiKey = async () => {
+    if (!aiApiKey.trim()) {
+      Alert.alert('Error', 'Please enter an API key');
+      return;
+    }
+
+    setIsValidatingKey(true);
+
+    try {
+      // Validate API key
+      const isValid = await AIService.validateApiKey(aiApiKey, aiProvider);
+
+      if (!isValid) {
+        Alert.alert('Error', 'Invalid API key. Please check and try again.');
+        setIsValidatingKey(false);
+        return;
+      }
+
+      // Save configuration
+      await AIService.configure({
+        provider: aiProvider,
+        apiKey: aiApiKey,
+      });
+
+      await AIService.setEnabled(true);
+      setAiEnabled(true);
+
+      Alert.alert(
+        'Success',
+        `${aiProvider === 'claude' ? 'Claude' : aiProvider} AI configured successfully! You can now use AI features in the editor.`,
+        [{ text: 'OK' }]
+      );
+
+      setAiApiKey(''); // Clear the input for security
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to validate API key');
+    } finally {
+      setIsValidatingKey(false);
+    }
+  };
+
+  const handleAIToggle = async (value: boolean) => {
+    if (value && !AIService.isConfigured()) {
+      Alert.alert(
+        'AI Not Configured',
+        'Please configure your AI API key first.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    await AIService.setEnabled(value);
+    setAiEnabled(value);
+  };
+
+  const handleClearAIConfig = async () => {
+    Alert.alert(
+      'Clear AI Configuration',
+      'Are you sure you want to remove your AI API key?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: async () => {
+            await AIService.clearConfiguration();
+            await AIService.setEnabled(false);
+            setAiEnabled(false);
+            setAiApiKey('');
+            Alert.alert('Success', 'AI configuration cleared');
+          },
+        },
+      ]
+    );
+  };
 
   const handleSaveGitHubToken = () => {
     if (!githubToken.trim()) {
@@ -98,6 +191,95 @@ export const SettingsScreen: React.FC = () => {
           <Ionicons name="list" size={20} color="#4A90E2" />
           <Text style={styles.reposButtonText}>Browse My Repositories</Text>
         </TouchableOpacity>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>🤖 AI Assistant</Text>
+        <Text style={styles.description}>
+          Enable AI-powered code assistance with Claude, OpenAI, or Gemini. Get help fixing bugs, explaining code, refactoring, and more.
+        </Text>
+
+        <View style={styles.switchContainer}>
+          <View style={styles.switchInfo}>
+            <Text style={styles.switchTitle}>Enable AI Assistant</Text>
+            <Text style={styles.switchDescription}>
+              {AIService.isConfigured()
+                ? `Using ${aiProvider === 'claude' ? 'Claude' : aiProvider} AI`
+                : 'Configure API key to enable'}
+            </Text>
+          </View>
+          <Switch
+            value={aiEnabled}
+            onValueChange={handleAIToggle}
+            trackColor={{ false: '#767577', true: '#4A90E2' }}
+            thumbColor={aiEnabled ? '#FFF' : '#f4f3f4'}
+          />
+        </View>
+
+        <Text style={styles.label}>AI Provider</Text>
+        <TouchableOpacity
+          style={[
+            styles.themeOption,
+            aiProvider === 'claude' && styles.themeOptionSelected,
+          ]}
+          onPress={() => setAiProvider('claude')}
+        >
+          <Ionicons
+            name={aiProvider === 'claude' ? 'radio-button-on' : 'radio-button-off'}
+            size={20}
+            color="#4A90E2"
+          />
+          <View style={styles.themeInfo}>
+            <Text style={styles.themeTitle}>Claude (Anthropic)</Text>
+            <Text style={styles.themeDescription}>
+              Best for code. 200K context. Recommended.
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        <Text style={styles.label}>API Key</Text>
+        <Text style={styles.description}>
+          {aiProvider === 'claude' && 'Get your key at: console.anthropic.com'}
+          {aiProvider === 'openai' && 'Get your key at: platform.openai.com'}
+          {aiProvider === 'gemini' && 'Get your key at: makersuite.google.com'}
+        </Text>
+        <TextInput
+          style={styles.input}
+          placeholder={
+            aiProvider === 'claude'
+              ? 'sk-ant-api03-...'
+              : aiProvider === 'openai'
+              ? 'sk-...'
+              : 'AI...'
+          }
+          placeholderTextColor="#666"
+          value={aiApiKey}
+          onChangeText={setAiApiKey}
+          autoCapitalize="none"
+          autoCorrect={false}
+          secureTextEntry
+        />
+
+        <TouchableOpacity
+          style={[styles.saveButton, isValidatingKey && styles.buttonDisabled]}
+          onPress={handleSaveAIApiKey}
+          disabled={isValidatingKey}
+        >
+          <Ionicons name="sparkles" size={20} color="#FFF" />
+          <Text style={styles.saveButtonText}>
+            {isValidatingKey ? 'Validating...' : 'Save & Validate API Key'}
+          </Text>
+        </TouchableOpacity>
+
+        {AIService.isConfigured() && (
+          <TouchableOpacity
+            style={styles.dangerButton}
+            onPress={handleClearAIConfig}
+          >
+            <Ionicons name="trash-outline" size={20} color="#FF4444" />
+            <Text style={styles.dangerButtonText}>Clear AI Configuration</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.section}>
@@ -327,5 +509,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginBottom: 15,
     fontStyle: 'italic',
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+  dangerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: '#FF4444',
+    padding: 12,
+    borderRadius: 5,
+    marginTop: 10,
+  },
+  dangerButtonText: {
+    color: '#FF4444',
+    fontWeight: 'bold',
+    marginLeft: 8,
   },
 });

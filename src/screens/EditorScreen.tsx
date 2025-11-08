@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Dimensions, TouchableOpacity, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FileBrowser } from '../components/FileBrowser';
 import { SmartEditor } from '../components/SmartEditor';
 import { TabBar } from '../components/TabBar';
 import { GitPanel } from '../components/GitPanel';
+import { AIAssistantDrawer } from '../components/AIAssistantDrawer';
 import { useEditor } from '../contexts/EditorContext';
 import { FileItem, TabItem } from '../types';
 import { FileSystemService } from '../services/FileSystemService';
 import { PreferencesService } from '../services/PreferencesService';
+import { AIService } from '../services/ai';
 
 const { width } = Dimensions.get('window');
 
@@ -18,8 +20,19 @@ export const EditorScreen: React.FC = () => {
   const [layoutMode, setLayoutMode] = useState<LayoutMode>('split');
   const [showGitPanel, setShowGitPanel] = useState(false);
   const [readOnlyMode, setReadOnlyMode] = useState(false);
+  const [showAIAssistant, setShowAIAssistant] = useState(false);
+  const [aiEnabled, setAiEnabled] = useState(false);
   const { tabs, activeTabId, addTab, removeTab, updateTab, setActiveTab, getActiveTab } =
     useEditor();
+
+  useEffect(() => {
+    // Check if AI is enabled
+    const checkAI = async () => {
+      const enabled = await AIService.isEnabled();
+      setAiEnabled(enabled && AIService.isConfigured());
+    };
+    checkAI();
+  }, []);
 
   const handleFileSelect = async (file: FileItem) => {
     if (file.type === 'file') {
@@ -103,19 +116,31 @@ export const EditorScreen: React.FC = () => {
         </TouchableOpacity>
 
         {showEditor && activeTab && (
-          <TouchableOpacity
-            style={styles.toolbarButton}
-            onPress={() => setReadOnlyMode(!readOnlyMode)}
-          >
-            <Ionicons
-              name={readOnlyMode ? 'lock-closed' : 'lock-open'}
-              size={20}
-              color={readOnlyMode ? '#FFD700' : '#4A90E2'}
-            />
-            <Text style={styles.toolbarButtonText}>
-              {readOnlyMode ? 'Read-only' : 'Edit'}
-            </Text>
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity
+              style={styles.toolbarButton}
+              onPress={() => setReadOnlyMode(!readOnlyMode)}
+            >
+              <Ionicons
+                name={readOnlyMode ? 'lock-closed' : 'lock-open'}
+                size={20}
+                color={readOnlyMode ? '#FFD700' : '#4A90E2'}
+              />
+              <Text style={styles.toolbarButtonText}>
+                {readOnlyMode ? 'Read-only' : 'Edit'}
+              </Text>
+            </TouchableOpacity>
+
+            {aiEnabled && (
+              <TouchableOpacity
+                style={[styles.toolbarButton, styles.aiButton]}
+                onPress={() => setShowAIAssistant(true)}
+              >
+                <Ionicons name="sparkles" size={20} color="#9F7AEA" />
+                <Text style={[styles.toolbarButtonText, styles.aiButtonText]}>AI</Text>
+              </TouchableOpacity>
+            )}
+          </>
         )}
       </View>
 
@@ -178,6 +203,20 @@ export const EditorScreen: React.FC = () => {
           </View>
         )}
       </View>
+
+      {/* AI Assistant Drawer */}
+      <AIAssistantDrawer
+        visible={showAIAssistant}
+        onClose={() => setShowAIAssistant(false)}
+        filePath={activeTab?.path}
+        fileName={activeTab?.name}
+        fileContent={activeTab?.content}
+        onCodeInsert={(code) => {
+          if (activeTabId) {
+            updateTab(activeTabId, { content: code, isDirty: true });
+          }
+        }}
+      />
     </View>
   );
 };
@@ -212,6 +251,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginLeft: 5,
     fontWeight: '600',
+  },
+  aiButton: {
+    borderColor: '#9F7AEA',
+  },
+  aiButtonText: {
+    color: '#9F7AEA',
   },
   mainContent: {
     flex: 1,

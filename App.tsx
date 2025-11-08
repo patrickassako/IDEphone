@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, TouchableOpacity } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -11,11 +11,17 @@ import { EditorScreen } from './src/screens/EditorScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { GitHubReposScreen } from './src/screens/GitHubReposScreen';
 import { Repository } from './src/types';
+import { AIService } from './src/services/ai';
 
 const Stack = createStackNavigator();
 
 export default function App() {
   const [currentProject, setCurrentProject] = useState<Repository | null>(null);
+
+  useEffect(() => {
+    // Initialize AI Service on app start
+    AIService.initialize();
+  }, []);
 
   const handleProjectSelect = (repo: Repository) => {
     setCurrentProject(repo);
