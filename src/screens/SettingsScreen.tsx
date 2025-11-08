@@ -67,7 +67,13 @@ export const SettingsScreen: React.FC = () => {
       await AIService.setEnabled(true);
       setAiEnabled(true);
 
-      const providerName = aiProvider === 'claude' ? 'Claude' : aiProvider === 'gemini' ? 'Gemini' : aiProvider;
+      const providerName =
+        aiProvider === 'claude' ? 'Claude' :
+        aiProvider === 'gemini' ? 'Gemini' :
+        aiProvider === 'groq' ? 'Groq' :
+        aiProvider === 'deepseek' ? 'DeepSeek' :
+        aiProvider === 'mistral' ? 'Mistral' :
+        aiProvider;
       Alert.alert(
         'Success',
         `${providerName} AI configured successfully! You can now use AI features in the editor.`,
@@ -196,7 +202,7 @@ export const SettingsScreen: React.FC = () => {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>🤖 AI Assistant</Text>
         <Text style={styles.description}>
-          Enable AI-powered code assistance with Claude, OpenAI, or Gemini. Get help fixing bugs, explaining code, refactoring, and more.
+          Enable AI-powered code assistance. Get help fixing bugs, explaining code, refactoring, and more. Choose from multiple AI providers.
         </Text>
 
         <View style={styles.switchContainer}>
@@ -204,7 +210,14 @@ export const SettingsScreen: React.FC = () => {
             <Text style={styles.switchTitle}>Enable AI Assistant</Text>
             <Text style={styles.switchDescription}>
               {AIService.isConfigured()
-                ? `Using ${aiProvider === 'claude' ? 'Claude' : aiProvider === 'gemini' ? 'Gemini' : aiProvider} AI`
+                ? `Using ${
+                    aiProvider === 'claude' ? 'Claude' :
+                    aiProvider === 'gemini' ? 'Gemini' :
+                    aiProvider === 'groq' ? 'Groq' :
+                    aiProvider === 'deepseek' ? 'DeepSeek' :
+                    aiProvider === 'mistral' ? 'Mistral' :
+                    aiProvider
+                  } AI`
                 : 'Configure API key to enable'}
             </Text>
           </View>
@@ -257,20 +270,85 @@ export const SettingsScreen: React.FC = () => {
           </View>
         </TouchableOpacity>
 
+        <TouchableOpacity
+          style={[
+            styles.themeOption,
+            aiProvider === 'groq' && styles.themeOptionSelected,
+          ]}
+          onPress={() => setAiProvider('groq')}
+        >
+          <Ionicons
+            name={aiProvider === 'groq' ? 'radio-button-on' : 'radio-button-off'}
+            size={20}
+            color="#4A90E2"
+          />
+          <View style={styles.themeInfo}>
+            <Text style={styles.themeTitle}>⚡ Groq</Text>
+            <Text style={styles.themeDescription}>
+              Ultra-fast inference. Free tier. 300+ tokens/sec. Llama 3.3 70B.
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.themeOption,
+            aiProvider === 'deepseek' && styles.themeOptionSelected,
+          ]}
+          onPress={() => setAiProvider('deepseek')}
+        >
+          <Ionicons
+            name={aiProvider === 'deepseek' ? 'radio-button-on' : 'radio-button-off'}
+            size={20}
+            color="#4A90E2"
+          />
+          <View style={styles.themeInfo}>
+            <Text style={styles.themeTitle}>💰 DeepSeek</Text>
+            <Text style={styles.themeDescription}>
+              Ultra-low cost. $0.07 per 200K tokens. GPT-4 level performance.
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.themeOption,
+            aiProvider === 'mistral' && styles.themeOptionSelected,
+          ]}
+          onPress={() => setAiProvider('mistral')}
+        >
+          <Ionicons
+            name={aiProvider === 'mistral' ? 'radio-button-on' : 'radio-button-off'}
+            size={20}
+            color="#4A90E2"
+          />
+          <View style={styles.themeInfo}>
+            <Text style={styles.themeTitle}>💻 Mistral Codestral</Text>
+            <Text style={styles.themeDescription}>
+              Specialized for code. Quasi-free API. Perfect for IDEphone.
+            </Text>
+          </View>
+        </TouchableOpacity>
+
         <Text style={styles.label}>API Key</Text>
         <Text style={styles.description}>
           {aiProvider === 'claude' && 'Get your key at: console.anthropic.com'}
           {aiProvider === 'openai' && 'Get your key at: platform.openai.com'}
-          {aiProvider === 'gemini' && 'Get your key at: makersuite.google.com'}
+          {aiProvider === 'gemini' && 'Get your key at: aistudio.google.com/apikey'}
+          {aiProvider === 'groq' && 'Get your FREE key at: console.groq.com'}
+          {aiProvider === 'deepseek' && 'Get your key at: platform.deepseek.com'}
+          {aiProvider === 'mistral' && 'Get your key at: console.mistral.ai'}
         </Text>
         <TextInput
           style={styles.input}
           placeholder={
-            aiProvider === 'claude'
-              ? 'sk-ant-api03-...'
-              : aiProvider === 'openai'
-              ? 'sk-...'
-              : 'AIza...'
+            aiProvider === 'claude' ? 'sk-ant-api03-...' :
+            aiProvider === 'openai' ? 'sk-...' :
+            aiProvider === 'gemini' ? 'AIza...' :
+            aiProvider === 'groq' ? 'gsk_...' :
+            aiProvider === 'deepseek' ? 'sk-...' :
+            aiProvider === 'mistral' ? 'api-key...' :
+            'Enter your API key'
           }
           placeholderTextColor="#666"
           value={aiApiKey}

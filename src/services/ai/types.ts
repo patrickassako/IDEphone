@@ -3,7 +3,7 @@
  * Core types for AI integration in IDEphone
  */
 
-export type AIProviderType = 'claude' | 'openai' | 'gemini';
+export type AIProviderType = 'claude' | 'openai' | 'gemini' | 'groq' | 'deepseek' | 'mistral';
 
 export interface AIMessage {
   role: 'user' | 'assistant' | 'system';

@@ -7,6 +7,9 @@
 import { AIProvider } from './providers/AIProvider';
 import { ClaudeProvider } from './providers/ClaudeProvider';
 import { GeminiProvider } from './providers/GeminiProvider';
+import { GroqProvider } from './providers/GroqProvider';
+import { DeepSeekProvider } from './providers/DeepSeekProvider';
+import { MistralProvider } from './providers/MistralProvider';
 import { AIConfig, AIContext, AIResponse, AIProviderType, StreamCallback } from './types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -193,6 +196,12 @@ class AIServiceClass {
         throw new Error('OpenAI provider not yet implemented');
       case 'gemini':
         return new GeminiProvider();
+      case 'groq':
+        return new GroqProvider();
+      case 'deepseek':
+        return new DeepSeekProvider();
+      case 'mistral':
+        return new MistralProvider();
       default:
         throw new Error(`Unknown provider type: ${type}`);
     }
