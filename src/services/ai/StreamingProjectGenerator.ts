@@ -109,17 +109,27 @@ export class StreamingProjectGenerator {
 
     try {
       // Call AI service
+      console.log('🤖 Calling AI with prompt...');
       const response = await AIService.generateResponse(prompt, {
         fileName: 'project-generator',
         fileContent: '',
         messages: [],
       });
 
+      console.log('✅ AI Response received, length:', response.content.length);
+      console.log('📄 First 500 chars:', response.content.substring(0, 500));
+
       // Parse response for files
       const parsed = MultiFileGenerator.parseResponse(response.content);
 
+      console.log('📊 Parsed files:', parsed.files.length);
+      parsed.files.forEach((f, i) => {
+        console.log(`  ${i + 1}. ${f.path} (${f.language}) - ${f.content.length} chars`);
+      });
+
       if (!parsed.hasMultipleFiles || parsed.files.length === 0) {
-        throw new Error('AI did not generate valid project files');
+        console.error('❌ AI Response (full):', response.content);
+        throw new Error('AI did not generate valid project files. Check console logs.');
       }
 
       // Simulate streaming file creation
@@ -187,24 +197,55 @@ export class StreamingProjectGenerator {
   private buildPrompt(config: ProjectConfig): string {
     const { description, template, framework, styling, typescript, tests, git } = config;
 
-    let prompt = `Create a complete ${template} project with the following specifications:\n\n`;
-    prompt += `Description: ${description}\n\n`;
-    prompt += `Technical Stack:\n`;
-    prompt += `- Framework: ${framework}\n`;
-    prompt += `- Styling: ${styling}\n`;
-    prompt += `- TypeScript: ${typescript ? 'Yes' : 'No'}\n`;
-    prompt += `- Tests: ${tests ? 'Include test files' : 'No tests'}\n`;
-    prompt += `- Git: ${git ? 'Include .gitignore' : 'No git files'}\n\n`;
+    let prompt = `You are a professional project generator. Create a COMPLETE, WORKING ${template} project.
 
-    prompt += `IMPORTANT FORMATTING RULES:\n`;
-    prompt += `- Format EVERY file as: \`\`\`language:path/to/file.ext\n`;
-    prompt += `- Include package.json with all required dependencies\n`;
-    prompt += `- Include README.md with setup instructions\n`;
-    prompt += `- Create a complete, working project structure\n`;
-    prompt += `- Add helpful comments in complex code sections\n`;
-    prompt += `- Use modern best practices and patterns\n\n`;
+PROJECT REQUIREMENTS:
+Description: ${description}
 
-    prompt += `Generate the complete project now:`;
+TECHNICAL STACK:
+- Template: ${template}
+- Framework: ${framework}
+- Styling: ${styling}
+- TypeScript: ${typescript ? 'YES (use .ts/.tsx extensions)' : 'NO (use .js/.jsx)'}
+- Tests: ${tests ? 'YES (include test files)' : 'NO'}
+- Git: ${git ? 'YES (include .gitignore)' : 'NO'}
+
+CRITICAL FORMATTING RULES - YOU MUST FOLLOW THIS EXACTLY:
+
+1. Format EVERY file using this EXACT syntax:
+   \`\`\`language:path/to/file.ext
+   file content here
+   \`\`\`
+
+2. EXAMPLE of correct format:
+   \`\`\`json:package.json
+   {
+     "name": "my-app",
+     "version": "1.0.0"
+   }
+   \`\`\`
+
+   \`\`\`${typescript ? 'typescript' : 'javascript'}:src/App.${typescript ? 'tsx' : 'jsx'}
+   import React from 'react';
+   export default function App() {
+     return <div>Hello</div>;
+   }
+   \`\`\`
+
+3. You MUST create AT LEAST these files:
+   - package.json (with correct dependencies for ${framework})
+   - README.md (with setup instructions)
+   - Main entry file (index.html or similar)
+   - At least 2-3 component/source files
+   - ${styling === 'tailwind' ? 'Tailwind config file' : 'CSS/style files'}
+   ${git ? '- .gitignore file' : ''}
+   ${tests ? '- At least 1 test file' : ''}
+
+4. DO NOT write explanations or descriptions outside of file blocks
+5. Each file MUST have the proper file extension (.tsx, .jsx, .json, .css, etc.)
+6. Include ALL necessary imports and dependencies
+
+START GENERATING THE PROJECT NOW (minimum 5-8 files):`;
 
     return prompt;
   }

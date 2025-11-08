@@ -146,6 +146,17 @@ export const StreamingConsole: React.FC<StreamingConsoleProps> = ({
 
   return (
     <View style={styles.container}>
+      {/* Header with Rocket Icon */}
+      <View style={styles.headerSection}>
+        <View style={styles.headerIcon}>
+          <Ionicons name="rocket" size={32} color="#2EAADC" />
+        </View>
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.headerTitle}>Generating Your Project</Text>
+          <Text style={styles.headerSubtitle}>AI is crafting your code...</Text>
+        </View>
+      </View>
+
       {/* Progress Section */}
       <View style={styles.progressSection}>
         <View style={styles.progressHeader}>
@@ -161,10 +172,11 @@ export const StreamingConsole: React.FC<StreamingConsoleProps> = ({
               },
             ]}
           />
+          <View style={styles.progressBarGlow} />
         </View>
         {estimatedTime && estimatedTime > 0 && (
           <Text style={styles.estimatedTime}>
-            Estimated time: {estimatedTime}s remaining
+            ⏱️ About {estimatedTime}s remaining
           </Text>
         )}
       </View>
@@ -218,73 +230,113 @@ export const StreamingConsole: React.FC<StreamingConsoleProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
+    padding: 24,
+  },
+  headerSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 32,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2D2D2D',
+  },
+  headerIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    backgroundColor: '#1E3A8A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
+  headerTitle: {
+    color: '#FFF',
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    color: '#AAA',
+    fontSize: 14,
   },
   progressSection: {
-    marginBottom: 24,
+    marginBottom: 28,
   },
   progressHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   progressTitle: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: 'bold',
   },
   progressPercent: {
     color: '#2EAADC',
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: 'bold',
   },
   progressBarContainer: {
-    height: 8,
+    height: 10,
     backgroundColor: '#2D2D2D',
-    borderRadius: 4,
+    borderRadius: 6,
     overflow: 'hidden',
+    position: 'relative',
   },
   progressBarFill: {
     height: '100%',
     backgroundColor: '#2EAADC',
-    borderRadius: 4,
+    borderRadius: 6,
+  },
+  progressBarGlow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'transparent',
   },
   estimatedTime: {
-    color: '#666',
-    fontSize: 13,
-    marginTop: 8,
+    color: '#AAA',
+    fontSize: 14,
+    marginTop: 10,
+    fontWeight: '500',
   },
   activitySection: {
-    marginBottom: 24,
+    marginBottom: 28,
   },
   sectionTitle: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: 'bold',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   messageList: {
     backgroundColor: '#252525',
-    borderRadius: 12,
-    padding: 16,
-    maxHeight: 200,
+    borderRadius: 14,
+    padding: 18,
+    maxHeight: 220,
     borderWidth: 1,
     borderColor: '#2D2D2D',
   },
   message: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   messageIcon: {
-    marginRight: 10,
-    marginTop: 2,
+    marginRight: 12,
+    marginTop: 3,
   },
   messageText: {
     color: '#DDD',
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 15,
+    lineHeight: 22,
     flex: 1,
   },
   treeSection: {
@@ -292,8 +344,8 @@ const styles = StyleSheet.create({
   },
   treeList: {
     backgroundColor: '#252525',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 14,
+    padding: 18,
     borderWidth: 1,
     borderColor: '#2D2D2D',
   },
