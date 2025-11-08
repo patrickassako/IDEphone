@@ -17,6 +17,7 @@ interface CodeEditorProps {
   initialContent?: string;
   onContentChange?: (content: string, isDirty: boolean) => void;
   onSave?: () => void;
+  readOnly?: boolean;
 }
 
 export const CodeEditor: React.FC<CodeEditorProps> = ({
@@ -25,6 +26,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   initialContent = '',
   onContentChange,
   onSave,
+  readOnly = false,
 }) => {
   const [content, setContent] = useState(initialContent);
   const [isDirty, setIsDirty] = useState(false);
@@ -94,7 +96,13 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
       <View style={styles.toolbar}>
         <View style={styles.fileInfo}>
           <Text style={styles.fileName}>{fileName}</Text>
-          {isDirty && <Text style={styles.dirtyIndicator}>●</Text>}
+          {isDirty && !readOnly && <Text style={styles.dirtyIndicator}>●</Text>}
+          {readOnly && (
+            <View style={styles.readOnlyBadge}>
+              <Ionicons name="lock-closed" size={12} color="#FFD700" />
+              <Text style={styles.readOnlyText}>Read-only</Text>
+            </View>
+          )}
         </View>
         <View style={styles.toolbarButtons}>
           <TouchableOpacity style={styles.toolbarButton} onPress={decreaseFontSize}>
@@ -104,17 +112,19 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
           <TouchableOpacity style={styles.toolbarButton} onPress={increaseFontSize}>
             <Ionicons name="add-circle-outline" size={20} color="#FFF" />
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.toolbarButton, styles.saveButton]}
-            onPress={handleSave}
-            disabled={!isDirty}
-          >
-            <Ionicons
-              name="save"
-              size={20}
-              color={isDirty ? '#4A90E2' : '#666'}
-            />
-          </TouchableOpacity>
+          {!readOnly && (
+            <TouchableOpacity
+              style={[styles.toolbarButton, styles.saveButton]}
+              onPress={handleSave}
+              disabled={!isDirty}
+            >
+              <Ionicons
+                name="save"
+                size={20}
+                color={isDirty ? '#4A90E2' : '#666'}
+              />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -129,15 +139,20 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
 
         <ScrollView style={styles.codeScroll} nestedScrollEnabled>
           <TextInput
-            style={[styles.codeInput, { fontSize }]}
+            style={[
+              styles.codeInput,
+              { fontSize },
+              readOnly && styles.readOnlyInput,
+            ]}
             value={content}
-            onChangeText={handleContentChange}
+            onChangeText={readOnly ? undefined : handleContentChange}
             multiline
             autoCapitalize="none"
             autoCorrect={false}
             spellCheck={false}
             textAlignVertical="top"
             scrollEnabled={false}
+            editable={!readOnly}
           />
         </ScrollView>
       </View>
@@ -181,6 +196,21 @@ const styles = StyleSheet.create({
     color: '#4A90E2',
     marginLeft: 5,
     fontSize: 20,
+  },
+  readOnlyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#3D3D00',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
+  readOnlyText: {
+    color: '#FFD700',
+    fontSize: 11,
+    fontWeight: 'bold',
+    marginLeft: 4,
   },
   toolbarButtons: {
     flexDirection: 'row',
@@ -227,11 +257,16 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     minHeight: Dimensions.get('window').height,
   },
+  readOnlyInput: {
+    backgroundColor: '#1A1A1A',
+    color: '#AAA',
+  },
   statusBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 5,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
     backgroundColor: '#007ACC',
   },
   statusText: {

@@ -16,31 +16,90 @@ import { useEditor } from '../contexts/EditorContext';
 
 interface FileBrowserProps {
   onFileSelect: (file: FileItem) => void;
+  fullscreen?: boolean;
 }
 
-export const FileBrowser: React.FC<FileBrowserProps> = ({ onFileSelect }) => {
+export const FileBrowser: React.FC<FileBrowserProps> = ({ onFileSelect, fullscreen = false }) => {
   const [files, setFiles] = useState<FileItem[]>([]);
+  const [allFiles, setAllFiles] = useState<FileItem[]>([]);
   const [currentPath, setCurrentPath] = useState<string>('');
   const [showNewFileModal, setShowNewFileModal] = useState(false);
   const [showNewFolderModal, setShowNewFolderModal] = useState(false);
   const [newItemName, setNewItemName] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const { rootPath, setRootPath } = useEditor();
 
   useEffect(() => {
     initializeFileSystem();
   }, []);
 
+  useEffect(() => {
+    // When rootPath changes (e.g., a project is selected), load that project's files
+    if (rootPath) {
+      console.log('FileBrowser: Loading files from rootPath:', rootPath);
+      setCurrentPath(rootPath);
+      loadFiles(rootPath);
+    }
+  }, [rootPath]);
+
   const initializeFileSystem = async () => {
     await FileSystemService.initialize();
-    const baseDir = FileSystemService.getBaseDir();
-    setRootPath(baseDir);
-    setCurrentPath(baseDir);
-    loadFiles(baseDir);
+    // Don't set a default path here - wait for a project to be selected
+    if (rootPath) {
+      setCurrentPath(rootPath);
+      loadFiles(rootPath);
+    }
   };
 
   const loadFiles = async (path: string) => {
     const items = await FileSystemService.readDirectory(path);
     setFiles(items);
+
+    // Load all files recursively for search (only in fullscreen mode)
+    if (fullscreen && rootPath) {
+      loadAllFilesRecursive(rootPath);
+    }
+  };
+
+  const loadAllFilesRecursive = async (path: string) => {
+    try {
+      const allFilesList: FileItem[] = [];
+
+      const scanDirectory = async (dirPath: string, depth: number = 0) => {
+        if (depth > 10) return; // Prevent infinite loops
+
+        const items = await FileSystemService.readDirectory(dirPath);
+
+        for (const item of items) {
+          // Skip hidden files/folders and node_modules
+          if (item.name.startsWith('.') || item.name === 'node_modules') {
+            continue;
+          }
+
+          allFilesList.push(item);
+
+          if (item.type === 'directory') {
+            await scanDirectory(item.path, depth + 1);
+          }
+        }
+      };
+
+      await scanDirectory(path);
+      setAllFiles(allFilesList);
+    } catch (error) {
+      console.error('Error loading all files:', error);
+    }
+  };
+
+  const filterFiles = (query: string) => {
+    if (!query.trim()) {
+      return files;
+    }
+
+    const lowerQuery = query.toLowerCase();
+    return allFiles.filter(file =>
+      file.name.toLowerCase().includes(lowerQuery)
+    );
   };
 
   const handleFilePress = async (file: FileItem) => {
@@ -141,6 +200,8 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ onFileSelect }) => {
     </View>
   );
 
+  const displayedFiles = searchQuery ? filterFiles(searchQuery) : files;
+
   return (
     <View style={styles.container}>
       <View style={styles.toolbar}>
@@ -167,11 +228,42 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ onFileSelect }) => {
         </View>
       </View>
 
+      {/* Search bar (only in fullscreen mode) */}
+      {fullscreen && (
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={18} color="#666" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search files..."
+            placeholderTextColor="#666"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={18} color="#666" />
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
       <FlatList
-        data={files}
+        data={displayedFiles}
         keyExtractor={(item) => item.path}
         renderItem={({ item }) => renderFileItem({ item })}
         style={styles.fileList}
+        ListEmptyComponent={
+          searchQuery ? (
+            <View style={styles.emptySearch}>
+              <Ionicons name="search-outline" size={48} color="#666" />
+              <Text style={styles.emptySearchText}>
+                No files found matching "{searchQuery}"
+              </Text>
+            </View>
+          ) : null
+        }
       />
 
       {/* New File Modal */}
@@ -267,6 +359,38 @@ const styles = StyleSheet.create({
   toolbarButton: {
     marginLeft: 10,
     padding: 5,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2D2D2D',
+    marginHorizontal: 10,
+    marginVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#444',
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    color: '#FFF',
+    fontSize: 14,
+    paddingVertical: 8,
+  },
+  emptySearch: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptySearchText: {
+    color: '#666',
+    fontSize: 14,
+    marginTop: 10,
+    textAlign: 'center',
   },
   fileList: {
     flex: 1,

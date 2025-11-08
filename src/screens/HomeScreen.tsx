@@ -121,6 +121,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
   };
 
   const handleOpenProject = (repo: Repository) => {
+    console.log('Opening project:', repo.name, 'Path:', repo.path);
     setRootPath(repo.path);
     setCurrentRepository(repo);
     onProjectSelect(repo);
