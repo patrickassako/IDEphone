@@ -33,13 +33,11 @@ export const LightEditor: React.FC<LightEditorProps> = ({
     setContent(initialContent);
     // Update editor content when initialContent changes
     if (webViewRef.current && initialContent) {
-      const escapedContent = initialContent
-        .replace(/\\/g, '\\\\')
-        .replace(/`/g, '\\`')
-        .replace(/\$/g, '\\$');
+      // Use JSON.stringify to safely escape all special characters including HTML tags
+      const safeContent = JSON.stringify(initialContent);
       webViewRef.current.injectJavaScript(`
         if (window.editorReady && document.getElementById('editor')) {
-          document.getElementById('editor').value = \`${escapedContent}\`;
+          document.getElementById('editor').value = ${safeContent};
           updateHighlighting();
         }
         true;
