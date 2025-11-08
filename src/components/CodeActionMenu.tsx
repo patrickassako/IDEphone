@@ -8,7 +8,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-export type CodeAction = 'fix' | 'explain' | 'refactor' | 'document';
+export type CodeAction = 'fix' | 'explain' | 'refactor' | 'document' | 'generate';
 
 interface CodeActionMenuProps {
   visible: boolean;
@@ -28,6 +28,7 @@ export const CodeActionMenu: React.FC<CodeActionMenuProps> = ({
     { type: 'explain', icon: 'bulb-outline', label: 'Explain', color: '#2196F3' },
     { type: 'refactor', icon: 'git-branch-outline', label: 'Refactor', color: '#9C27B0' },
     { type: 'document', icon: 'chatbox-outline', label: 'Document', color: '#FF9800' },
+    { type: 'generate', icon: 'add-circle-outline', label: 'Generate', color: '#E91E63' },
   ];
 
   return (

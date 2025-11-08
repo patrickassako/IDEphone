@@ -8,11 +8,13 @@ import { GitPanel } from '../components/GitPanel';
 import { AIAssistantDrawer } from '../components/AIAssistantDrawer';
 import { CodeActionMenu, CodeAction } from '../components/CodeActionMenu';
 import { AIResultModal } from '../components/AIResultModal';
+import { FilePreviewModal } from '../components/FilePreviewModal';
 import { useEditor } from '../contexts/EditorContext';
 import { FileItem, TabItem } from '../types';
 import { FileSystemService } from '../services/FileSystemService';
 import { PreferencesService } from '../services/PreferencesService';
 import { AIService, AIContextBuilder } from '../services/ai';
+import { MultiFileGenerator, GeneratedFile } from '../services/ai/MultiFileGenerator';
 
 const { width } = Dimensions.get('window');
 
@@ -35,6 +37,11 @@ export const EditorScreen: React.FC = () => {
   const [aiResultContent, setAiResultContent] = useState('');
   const [aiResultCodeBlocks, setAiResultCodeBlocks] = useState<Array<{ language: string; code: string }>>([]);
   const [isAILoading, setIsAILoading] = useState(false);
+
+  // Multi-file generation states
+  const [showFilePreview, setShowFilePreview] = useState(false);
+  const [generatedFiles, setGeneratedFiles] = useState<GeneratedFile[]>([]);
+  const [generationSummary, setGenerationSummary] = useState<string>('');
 
   const { tabs, activeTabId, addTab, removeTab, updateTab, setActiveTab, getActiveTab } =
     useEditor();
@@ -116,6 +123,7 @@ export const EditorScreen: React.FC = () => {
       explain: 'Explain Code',
       refactor: 'Refactor Code',
       document: 'Add Documentation',
+      generate: 'Generate Files',
     };
 
     const actionPrompts: Record<CodeAction, string> = {
@@ -123,8 +131,52 @@ export const EditorScreen: React.FC = () => {
       explain: 'Explain what this code does in simple terms:\n\n',
       refactor: 'Refactor this code to improve readability and performance:\n\n',
       document: 'Add clear, concise comments and documentation to this code:\n\n',
+      generate: 'Based on this code or description, generate the necessary files for a complete implementation. Include all required files (components, tests, styles, etc.). Format each file as:\n\n```language:path/to/file.ext\ncode here\n```\n\nDescription:\n',
     };
 
+    // Handle 'generate' action differently - it creates multiple files
+    if (action === 'generate') {
+      setAiResultTitle(actionTitles[action]);
+      setAiResultContent('');
+      setAiResultCodeBlocks([]);
+      setIsAILoading(true);
+      setShowResultModal(true);
+
+      try {
+        const context = AIContextBuilder.buildMinimal(
+          activeTab.name,
+          activeTab.content,
+          selectedText
+        );
+
+        const response = await AIService.generateResponse(
+          actionPrompts[action] + selectedText,
+          context
+        );
+
+        // Parse the response to extract multiple files
+        const parsed = MultiFileGenerator.parseResponse(response.content);
+
+        if (parsed.hasMultipleFiles) {
+          // Show file preview modal for multi-file generation
+          setGeneratedFiles(parsed.files);
+          setGenerationSummary(parsed.summary || 'Generated files based on your request');
+          setShowResultModal(false);
+          setShowFilePreview(true);
+        } else {
+          // Fallback: show regular result modal if no files were parsed
+          setAiResultContent(response.content);
+          setAiResultCodeBlocks(response.codeBlocks || []);
+        }
+      } catch (error: any) {
+        setAiResultContent(`Error: ${error.message || 'Failed to get AI response'}`);
+      } finally {
+        setIsAILoading(false);
+      }
+      return;
+    }
+
+    // Handle other actions (fix, explain, refactor, document)
     setAiResultTitle(actionTitles[action]);
     setAiResultContent('');
     setAiResultCodeBlocks([]);
@@ -162,6 +214,52 @@ export const EditorScreen: React.FC = () => {
       currentContent.substring(selectionEnd);
 
     updateTab(activeTabId, { content: newContent, isDirty: true });
+  };
+
+  const handleCreateFiles = async (filesToCreate: GeneratedFile[]) => {
+    try {
+      // Create directories and files
+      for (const file of filesToCreate) {
+        // Validate file path
+        const validation = MultiFileGenerator.validateFilePath(file.path);
+        if (!validation.valid) {
+          console.error(`Invalid file path: ${file.path} - ${validation.error}`);
+          continue;
+        }
+
+        // Get current working directory
+        const currentDir = await FileSystemService.getCurrentDirectory();
+        const fullPath = `${currentDir}/${file.path}`;
+
+        // Create directory structure if needed
+        const dirPath = fullPath.substring(0, fullPath.lastIndexOf('/'));
+        await FileSystemService.ensureDirectoryExists(dirPath);
+
+        // Write file
+        await FileSystemService.writeFile(fullPath, file.content);
+
+        // Open file in a new tab
+        const newTab: TabItem = {
+          id: `${fullPath}-${Date.now()}`,
+          name: file.path.split('/').pop() || file.path,
+          path: fullPath,
+          content: file.content,
+          isDirty: false,
+          language: file.language || FileSystemService.getLanguageFromFileName(file.path),
+        };
+
+        addTab(newTab);
+      }
+
+      // Close preview modal
+      setShowFilePreview(false);
+
+      // Show success message (you could add a toast notification here)
+      console.log(`Successfully created ${filesToCreate.length} files`);
+    } catch (error: any) {
+      console.error('Error creating files:', error);
+      // You could show an error modal here
+    }
   };
 
   const activeTab = getActiveTab();
@@ -314,6 +412,15 @@ export const EditorScreen: React.FC = () => {
         isLoading={isAILoading}
         onApply={handleApplyCode}
         onClose={() => setShowResultModal(false)}
+      />
+
+      {/* File Preview Modal for Multi-file Generation */}
+      <FilePreviewModal
+        visible={showFilePreview}
+        files={generatedFiles}
+        summary={generationSummary}
+        onCreateFiles={handleCreateFiles}
+        onClose={() => setShowFilePreview(false)}
       />
     </View>
   );

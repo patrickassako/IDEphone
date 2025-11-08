@@ -155,4 +155,20 @@ export class FileSystemService {
       return false;
     }
   }
+
+  static getCurrentDirectory(): string {
+    return this.baseDir;
+  }
+
+  static async ensureDirectoryExists(dirPath: string): Promise<void> {
+    try {
+      const info = await FileSystem.getInfoAsync(dirPath);
+      if (!info.exists) {
+        await FileSystem.makeDirectoryAsync(dirPath, { intermediates: true });
+      }
+    } catch (error) {
+      console.error('Error ensuring directory exists:', error);
+      throw error;
+    }
+  }
 }
