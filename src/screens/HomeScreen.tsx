@@ -8,9 +8,12 @@ import {
   Alert,
   TextInput,
   Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import JSZip from 'jszip';
 import { FileSystemService } from '../services/FileSystemService';
 import { Repository } from '../types';
 import { useEditor } from '../contexts/EditorContext';
@@ -26,6 +29,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
   const [showCloneModal, setShowCloneModal] = useState(false);
   const [projectName, setProjectName] = useState('');
   const [cloneUrl, setCloneUrl] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
   const { setRootPath, setCurrentRepository } = useEditor();
 
   useEffect(() => {
@@ -215,6 +219,149 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
     }
   };
 
+  const handleOpenProjectFromZip = async () => {
+    try {
+      setIsImporting(true);
+
+      // Pick a ZIP file
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/zip',
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled) {
+        setIsImporting(false);
+        return;
+      }
+
+      const zipFile = result.assets[0];
+      const baseDir = FileSystemService.getBaseDir();
+
+      // Extract project name from ZIP filename
+      const projectName = zipFile.name.replace('.zip', '').replace(/[^a-zA-Z0-9-_]/g, '_');
+      const projectPath = baseDir + (baseDir.endsWith('/') ? '' : '/') + projectName;
+
+      // Check if project already exists
+      const exists = await FileSystemService.exists(projectPath);
+      if (exists) {
+        Alert.alert(
+          'Project Exists',
+          `A project named "${projectName}" already exists. Do you want to replace it?`,
+          [
+            {
+              text: 'Cancel',
+              style: 'cancel',
+              onPress: () => setIsImporting(false),
+            },
+            {
+              text: 'Replace',
+              style: 'destructive',
+              onPress: async () => {
+                await FileSystemService.deleteItem(projectPath);
+                await extractZipAndOpen(zipFile.uri, projectPath, projectName);
+              },
+            },
+          ]
+        );
+      } else {
+        await extractZipAndOpen(zipFile.uri, projectPath, projectName);
+      }
+    } catch (error) {
+      console.error('Error opening project from ZIP:', error);
+      Alert.alert('Error', 'Failed to open project from ZIP file');
+      setIsImporting(false);
+    }
+  };
+
+  const extractZipAndOpen = async (zipUri: string, projectPath: string, projectName: string) => {
+    try {
+      // Read ZIP file as base64
+      const zipBase64 = await FileSystem.readAsStringAsync(zipUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      // Convert base64 to binary
+      const zipBinary = atob(zipBase64);
+      const zipArray = new Uint8Array(zipBinary.length);
+      for (let i = 0; i < zipBinary.length; i++) {
+        zipArray[i] = zipBinary.charCodeAt(i);
+      }
+
+      // Unzip the file
+      const zip = await JSZip.loadAsync(zipArray);
+
+      // Create project directory
+      await FileSystemService.createDirectory(FileSystemService.getBaseDir(), projectName);
+
+      // Extract all files
+      let fileCount = 0;
+      const filePromises: Promise<void>[] = [];
+
+      zip.forEach((relativePath, file) => {
+        if (!file.dir) {
+          const promise = (async () => {
+            try {
+              // Skip hidden files and system files
+              if (relativePath.includes('__MACOSX') || relativePath.startsWith('.')) {
+                return;
+              }
+
+              const content = await file.async('string');
+              const fullPath = projectPath + '/' + relativePath;
+
+              // Create parent directories if needed
+              const pathParts = relativePath.split('/');
+              if (pathParts.length > 1) {
+                let currentPath = projectPath;
+                for (let i = 0; i < pathParts.length - 1; i++) {
+                  currentPath += '/' + pathParts[i];
+                  const dirExists = await FileSystemService.exists(currentPath);
+                  if (!dirExists) {
+                    await FileSystem.makeDirectoryAsync(currentPath, { intermediates: true });
+                  }
+                }
+              }
+
+              // Write the file
+              await FileSystem.writeAsStringAsync(fullPath, content);
+              fileCount++;
+            } catch (error) {
+              console.error(`Error extracting ${relativePath}:`, error);
+            }
+          })();
+
+          filePromises.push(promise);
+        }
+      });
+
+      // Wait for all files to be extracted
+      await Promise.all(filePromises);
+
+      setIsImporting(false);
+
+      if (fileCount > 0) {
+        const newRepo: Repository = {
+          name: projectName,
+          path: projectPath,
+        };
+
+        loadProjects();
+
+        Alert.alert(
+          'Success',
+          `Project "${projectName}" opened successfully with ${fileCount} files`,
+          [{ text: 'OK', onPress: () => handleOpenProject(newRepo) }]
+        );
+      } else {
+        Alert.alert('Error', 'No files found in ZIP archive');
+      }
+    } catch (error) {
+      console.error('Error extracting ZIP:', error);
+      Alert.alert('Error', 'Failed to extract ZIP file');
+      setIsImporting(false);
+    }
+  };
+
   const renderProject = ({ item }: { item: Repository }) => (
     <TouchableOpacity
       style={styles.projectItem}
@@ -239,30 +386,51 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
         <Text style={styles.subtitle}>Mobile Code Editor</Text>
       </View>
 
-      <View style={styles.actions}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => setShowNewProjectModal(true)}
-        >
-          <Ionicons name="add-circle" size={24} color="#4A90E2" />
-          <Text style={styles.actionText}>New Project</Text>
-        </TouchableOpacity>
+      <View style={styles.actionsContainer}>
+        <View style={styles.actions}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => setShowNewProjectModal(true)}
+          >
+            <Ionicons name="add-circle" size={24} color="#4A90E2" />
+            <Text style={styles.actionText}>New Project</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => setShowCloneModal(true)}
-        >
-          <Ionicons name="cloud-download" size={24} color="#4A90E2" />
-          <Text style={styles.actionText}>Clone Repository</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handleOpenProjectFromZip}
+            disabled={isImporting}
+          >
+            {isImporting ? (
+              <ActivityIndicator size="small" color="#4A90E2" />
+            ) : (
+              <Ionicons name="folder-open" size={24} color="#4A90E2" />
+            )}
+            <Text style={styles.actionText}>Open Project</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={handleImportFile}
-        >
-          <Ionicons name="document-attach" size={24} color="#4A90E2" />
-          <Text style={styles.actionText}>Import Files</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => setShowCloneModal(true)}
+          >
+            <Ionicons name="cloud-download" size={24} color="#4A90E2" />
+            <Text style={styles.actionText}>Clone Repo</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handleImportFile}
+          >
+            <Ionicons name="document-attach" size={24} color="#4A90E2" />
+            <Text style={styles.actionText}>Import Files</Text>
+          </TouchableOpacity>
+        </View>
+        {isImporting && (
+          <View style={styles.loadingBanner}>
+            <ActivityIndicator size="small" color="#4A90E2" />
+            <Text style={styles.loadingText}>Extracting project...</Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.projectsSection}>
@@ -377,6 +545,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#AAA',
   },
+  actionsContainer: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
   actions: {
     flexDirection: 'row',
     padding: 20,
@@ -384,11 +556,26 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     alignItems: 'center',
-    padding: 15,
+    padding: 10,
+    minWidth: 70,
   },
   actionText: {
     color: '#FFF',
     marginTop: 8,
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  loadingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    backgroundColor: 'rgba(74, 144, 226, 0.1)',
+  },
+  loadingText: {
+    color: '#4A90E2',
+    marginLeft: 10,
     fontSize: 14,
   },
   projectsSection: {
