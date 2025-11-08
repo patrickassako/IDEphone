@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, TouchableOpacity } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
+import { Ionicons } from '@expo/vector-icons';
 import { EditorProvider } from './src/contexts/EditorContext';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { EditorScreen } from './src/screens/EditorScreen';
+import { SettingsScreen } from './src/screens/SettingsScreen';
 import { Repository } from './src/types';
 
 const Stack = createStackNavigator();
@@ -35,7 +37,17 @@ export default function App() {
           >
             <Stack.Screen
               name="Home"
-              options={{ title: 'IDEphone' }}
+              options={({ navigation }) => ({
+                title: 'IDEphone',
+                headerRight: () => (
+                  <TouchableOpacity
+                    style={{ marginRight: 15 }}
+                    onPress={() => navigation.navigate('Settings')}
+                  >
+                    <Ionicons name="settings-outline" size={24} color="#FFF" />
+                  </TouchableOpacity>
+                ),
+              })}
             >
               {(props) => (
                 <HomeScreen
@@ -53,6 +65,14 @@ export default function App() {
               options={{
                 title: currentProject?.name || 'Editor',
                 headerBackTitle: 'Projects',
+              }}
+            />
+            <Stack.Screen
+              name="Settings"
+              component={SettingsScreen}
+              options={{
+                title: 'Settings',
+                headerBackTitle: 'Home',
               }}
             />
           </Stack.Navigator>

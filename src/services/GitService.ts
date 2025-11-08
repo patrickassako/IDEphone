@@ -79,9 +79,18 @@ export class GitService {
     name: 'IDEphone User',
     email: 'user@idephone.app',
   };
+  private static githubToken: string | null = null;
 
   static setConfig(config: GitConfig): void {
     this.config = config;
+  }
+
+  static setGitHubToken(token: string): void {
+    this.githubToken = token;
+  }
+
+  static getGitHubToken(): string | null {
+    return this.githubToken;
   }
 
   static async init(dir: string): Promise<void> {
@@ -95,7 +104,7 @@ export class GitService {
 
   static async clone(url: string, dir: string, depth?: number): Promise<void> {
     try {
-      await git.clone({
+      const cloneOptions: any = {
         fs,
         http,
         dir,
@@ -103,10 +112,32 @@ export class GitService {
         depth: depth || 1,
         singleBranch: true,
         corsProxy: 'https://cors.isomorphic-git.org',
-      });
-    } catch (error) {
+      };
+
+      // Add authentication if token is available
+      if (this.githubToken) {
+        cloneOptions.onAuth = () => ({
+          username: this.githubToken,
+          password: 'x-oauth-basic',
+        });
+      }
+
+      await git.clone(cloneOptions);
+    } catch (error: any) {
       console.error('Error cloning repository:', error);
-      throw error;
+
+      // Provide more helpful error messages
+      if (error.message?.includes('HTTP 404')) {
+        throw new Error('Repository not found. Please check the URL.');
+      } else if (error.message?.includes('HTTP 401') || error.message?.includes('HTTP 403')) {
+        throw new Error('Authentication failed. This might be a private repository. Please add a GitHub token in Settings.');
+      } else if (error.message?.includes('Could not find HEAD')) {
+        throw new Error('Repository appears to be empty or invalid. Please ensure the repository has at least one commit.');
+      } else if (error.message?.includes('CORS')) {
+        throw new Error('Network error. Please check your internet connection.');
+      } else {
+        throw new Error(error.message || 'Failed to clone repository');
+      }
     }
   }
 

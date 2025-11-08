@@ -154,13 +154,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
       const result = await DocumentPicker.getDocumentAsync({
         type: '*/*',
         copyToCacheDirectory: true,
+        multiple: true, // Allow multiple file selection
       });
 
       if (result.canceled) {
         return;
       }
 
-      const file = result.assets[0];
+      const files = result.assets;
       const baseDir = FileSystemService.getBaseDir();
 
       // Create a project folder for imported files if it doesn't exist
@@ -173,25 +174,40 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
         // Directory might already exist, that's ok
       }
 
-      // Copy the file to the imported project folder
-      const fileName = file.name;
-      const destPath = importedProjectPath + '/' + fileName;
+      // Copy all files to the imported project folder
+      let successCount = 0;
+      for (const file of files) {
+        try {
+          const fileName = file.name;
+          const destPath = importedProjectPath + '/' + fileName;
+          await FileSystemService.copyItem(file.uri, destPath);
+          successCount++;
+        } catch (error) {
+          console.error(`Error importing file ${file.name}:`, error);
+        }
+      }
 
-      await FileSystemService.copyItem(file.uri, destPath);
-
-      Alert.alert('Success', `File "${fileName}" imported successfully`, [
-        {
-          text: 'OK',
-          onPress: () => {
-            loadProjects();
-            const repo: Repository = {
-              name: importedProjectName,
-              path: importedProjectPath,
-            };
-            handleOpenProject(repo);
-          },
-        },
-      ]);
+      if (successCount > 0) {
+        Alert.alert(
+          'Success',
+          `${successCount} file(s) imported successfully`,
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                loadProjects();
+                const repo: Repository = {
+                  name: importedProjectName,
+                  path: importedProjectPath,
+                };
+                handleOpenProject(repo);
+              },
+            },
+          ]
+        );
+      } else {
+        Alert.alert('Error', 'Failed to import files');
+      }
     } catch (error) {
       console.error('Error importing file:', error);
       Alert.alert('Error', 'Failed to import file');
@@ -244,7 +260,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
           onPress={handleImportFile}
         >
           <Ionicons name="document-attach" size={24} color="#4A90E2" />
-          <Text style={styles.actionText}>Open File</Text>
+          <Text style={styles.actionText}>Import Files</Text>
         </TouchableOpacity>
       </View>
 
