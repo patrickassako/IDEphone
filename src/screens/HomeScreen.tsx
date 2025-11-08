@@ -9,12 +9,14 @@ import {
   TextInput,
   Modal,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import JSZip from 'jszip';
 import { FileSystemService } from '../services/FileSystemService';
+import { FolderPickerService } from '../services/FolderPickerService';
 import { Repository } from '../types';
 import { useEditor } from '../contexts/EditorContext';
 import { GitService } from '../services/GitService';
@@ -219,6 +221,27 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
     }
   };
 
+  const handleOpenProjectOptions = () => {
+    Alert.alert(
+      'Ouvrir un projet',
+      'Choisissez une méthode pour ouvrir votre projet',
+      [
+        {
+          text: 'Fichier ZIP',
+          onPress: handleOpenProjectFromZip,
+        },
+        {
+          text: 'Sélectionner des fichiers',
+          onPress: handleOpenProjectFromFiles,
+        },
+        {
+          text: 'Annuler',
+          style: 'cancel',
+        },
+      ]
+    );
+  };
+
   const handleOpenProjectFromZip = async () => {
     try {
       setIsImporting(true);
@@ -269,6 +292,126 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
     } catch (error) {
       console.error('Error opening project from ZIP:', error);
       Alert.alert('Error', 'Failed to open project from ZIP file');
+      setIsImporting(false);
+    }
+  };
+
+  const handleOpenProjectFromFiles = async () => {
+    try {
+      setIsImporting(true);
+
+      // Show instructions first
+      const instructions = Platform.select({
+        android:
+          'Sélectionnez TOUS les fichiers de votre projet.\n\n' +
+          'Astuce: Dans votre gestionnaire de fichiers, appuyez longuement sur un fichier, puis sélectionnez tous les autres fichiers du projet.',
+        ios:
+          'Ouvrez l\'app Files, naviguez vers votre projet.\n\n' +
+          'Appuyez sur "Sélectionner" en haut à droite, puis sélectionnez tous les fichiers de votre projet.',
+        default: 'Sélectionnez tous les fichiers de votre projet',
+      });
+
+      Alert.alert(
+        'Comment sélectionner votre projet ?',
+        instructions,
+        [
+          {
+            text: 'Annuler',
+            style: 'cancel',
+            onPress: () => setIsImporting(false),
+          },
+          {
+            text: 'Continuer',
+            onPress: async () => {
+              await selectMultipleFiles();
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('Error opening project from files:', error);
+      Alert.alert('Error', 'Failed to open project');
+      setIsImporting(false);
+    }
+  };
+
+  const selectMultipleFiles = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: '*/*',
+        copyToCacheDirectory: true,
+        multiple: true,
+      });
+
+      if (result.canceled) {
+        setIsImporting(false);
+        return;
+      }
+
+      const files = result.assets;
+      if (files.length === 0) {
+        Alert.alert('Error', 'No files selected');
+        setIsImporting(false);
+        return;
+      }
+
+      const baseDir = FileSystemService.getBaseDir();
+
+      // Extract project name from first file or use timestamp
+      const projectName = `Project_${new Date().getTime()}`;
+      const projectPath = baseDir + (baseDir.endsWith('/') ? '' : '/') + projectName;
+
+      // Create project directory
+      await FileSystemService.createDirectory(baseDir, projectName);
+
+      // Copy all files and recreate structure
+      let successCount = 0;
+      for (const file of files) {
+        try {
+          const fileName = file.name;
+          const destPath = projectPath + '/' + fileName;
+
+          // Create parent directories if file has path separators
+          const pathParts = fileName.split('/');
+          if (pathParts.length > 1) {
+            let currentPath = projectPath;
+            for (let i = 0; i < pathParts.length - 1; i++) {
+              currentPath += '/' + pathParts[i];
+              const dirExists = await FileSystemService.exists(currentPath);
+              if (!dirExists) {
+                await FileSystem.makeDirectoryAsync(currentPath, { intermediates: true });
+              }
+            }
+          }
+
+          await FileSystemService.copyItem(file.uri, destPath);
+          successCount++;
+        } catch (error) {
+          console.error(`Error importing file ${file.name}:`, error);
+        }
+      }
+
+      setIsImporting(false);
+
+      if (successCount > 0) {
+        const newRepo: Repository = {
+          name: projectName,
+          path: projectPath,
+        };
+
+        loadProjects();
+
+        Alert.alert(
+          'Success',
+          `Project opened with ${successCount} files`,
+          [{ text: 'OK', onPress: () => handleOpenProject(newRepo) }]
+        );
+      } else {
+        Alert.alert('Error', 'Failed to import files');
+      }
+    } catch (error) {
+      console.error('Error selecting files:', error);
+      Alert.alert('Error', 'Failed to select files');
       setIsImporting(false);
     }
   };
@@ -398,7 +541,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
 
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={handleOpenProjectFromZip}
+            onPress={handleOpenProjectOptions}
             disabled={isImporting}
           >
             {isImporting ? (
