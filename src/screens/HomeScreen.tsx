@@ -811,27 +811,29 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
       </Modal>
 
       {/* AI Project Generator Modal */}
-      {!isGenerating && !showSuccessScreen ? (
-        <ProjectGeneratorModal
-          visible={showProjectGenerator}
-          onClose={() => setShowProjectGenerator(false)}
-          onGenerate={handleGenerateProject}
-        />
-      ) : isGenerating ? (
-        <Modal transparent visible={showProjectGenerator} animationType="none">
-          <View style={styles.streamingContainer}>
-            <View style={styles.streamingContent}>
-              <StreamingConsole
-                messages={streamMessages}
-                fileTree={fileTree}
-                progress={generationProgress}
-                estimatedTime={estimatedTime}
-              />
-            </View>
+      <ProjectGeneratorModal
+        visible={showProjectGenerator && !isGenerating && !showSuccessScreen}
+        onClose={() => setShowProjectGenerator(false)}
+        onGenerate={handleGenerateProject}
+      />
+
+      {/* Streaming Console Modal */}
+      <Modal transparent visible={isGenerating} animationType="fade">
+        <View style={styles.streamingContainer}>
+          <View style={styles.streamingContent}>
+            <StreamingConsole
+              messages={streamMessages}
+              fileTree={fileTree}
+              progress={generationProgress}
+              estimatedTime={estimatedTime}
+            />
           </View>
-        </Modal>
-      ) : showSuccessScreen && completedConfig ? (
-        <Modal transparent visible={showProjectGenerator} animationType="none">
+        </View>
+      </Modal>
+
+      {/* Success Screen Modal */}
+      {showSuccessScreen && completedConfig && (
+        <Modal transparent visible={showSuccessScreen} animationType="fade">
           <View style={styles.streamingContainer}>
             <View style={styles.streamingContent}>
               <ProjectSuccessScreen
@@ -854,7 +856,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
             </View>
           </View>
         </Modal>
-      ) : null}
+      )}
     </View>
   );
 };
@@ -1062,8 +1064,8 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   streamingContent: {
-    width: '100%',
-    maxHeight: '95%',
+    width: '95%',
+    height: '85%',
     backgroundColor: '#1A1A1A',
     borderRadius: 24,
     overflow: 'hidden',
