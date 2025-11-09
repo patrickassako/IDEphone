@@ -1,19 +1,14 @@
 /**
- * Streaming Console Component
- * Displays real-time AI generation activity with Cursor-style streaming
- * Features: Typing effect, progress tracking, animated file tree
+ * Streaming Console Component - Ultra Minimal Version
+ * Displays real-time AI generation activity
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
-  Animated,
-  Easing,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 
 export interface StreamMessage {
   id: string;
@@ -39,165 +34,56 @@ interface StreamingConsoleProps {
   onComplete?: () => void;
 }
 
-// Simple Tree Node Component (no animations for now)
-const SimpleTreeNode: React.FC<{
-  node: FileTreeNode;
-  depth: number;
-}> = ({ node, depth }) => {
-  const getStatusIcon = (status: 'pending' | 'creating' | 'completed'): React.ReactNode => {
-    switch (status) {
-      case 'completed':
-        return <Ionicons name="checkmark-circle" size={16} color="#0F7B6C" />;
-      case 'creating':
-        return <Ionicons name="sync" size={16} color="#2EAADC" />;
-      case 'pending':
-        return <Ionicons name="ellipse-outline" size={16} color="#666" />;
-    }
-  };
-
-  return (
-    <View style={[styles.treeNode, { marginLeft: depth * 20 }]}>
-      <View style={styles.treeNodeContent}>
-        {getStatusIcon(node.status)}
-        <Ionicons
-          name={node.type === 'directory' ? 'folder' : 'document-text'}
-          size={16}
-          color={node.type === 'directory' ? '#E91E63' : '#2EAADC'}
-          style={styles.treeIcon}
-        />
-        <Text
-          style={[
-            styles.treeNodeText,
-            node.status === 'completed' && styles.treeNodeTextCompleted,
-          ]}
-        >
-          {node.path.split('/').pop()}
-        </Text>
-      </View>
-    </View>
-  );
-};
-
 export const StreamingConsole: React.FC<StreamingConsoleProps> = ({
-  messages,
-  fileTree,
-  progress,
+  messages = [],
+  fileTree = [],
+  progress = 0,
   estimatedTime,
 }) => {
-  const scrollViewRef = useRef<ScrollView>(null);
-  const [visibleMessages, setVisibleMessages] = useState<StreamMessage[]>([]);
-  const [typingMessages, setTypingMessages] = useState<{ [key: string]: string }>({});
-
-  // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
-  }, [messages.length]);
-
-  // Simple message update (no typing effect for now)
-  useEffect(() => {
-    setVisibleMessages(messages);
-  }, [messages]);
-
-  const getMessageIcon = (type: StreamMessage['type']): string => {
-    switch (type) {
-      case 'success':
-        return 'checkmark-circle';
-      case 'progress':
-        return 'sync';
-      case 'file':
-        return 'document-outline';
-      case 'directory':
-        return 'folder-outline';
-      default:
-        return 'information-circle';
-    }
-  };
-
-  const getMessageColor = (type: StreamMessage['type']): string => {
-    switch (type) {
-      case 'success':
-        return '#0F7B6C';
-      case 'progress':
-        return '#2EAADC';
-      case 'file':
-        return '#9F7AEA';
-      case 'directory':
-        return '#E91E63';
-      default:
-        return '#AAA';
-    }
-  };
-
-  const renderFileTree = (nodes: FileTreeNode[], depth = 0): React.ReactNode => {
-    return nodes.map((node, index) => (
-      <View key={`${node.path}-${index}`}>
-        <SimpleTreeNode node={node} depth={depth} />
-        {node.children && node.children.length > 0 && renderFileTree(node.children, depth + 1)}
-      </View>
-    ));
-  };
-
   return (
     <View style={styles.container}>
-      {/* Header with Rocket Icon */}
-      <View style={styles.headerSection}>
-        <View style={styles.headerIcon}>
-          <Ionicons name="rocket" size={32} color="#2EAADC" />
-        </View>
-        <View style={styles.headerTextContainer}>
-          <Text style={styles.headerTitle}>Generating Your Project</Text>
-          <Text style={styles.headerSubtitle}>AI is crafting your code...</Text>
-        </View>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.title}>🚀 Generating Your Project</Text>
+        <Text style={styles.subtitle}>AI is crafting your code...</Text>
       </View>
 
-      {/* Progress Section */}
+      {/* Progress */}
       <View style={styles.progressSection}>
-        <View style={styles.progressHeader}>
-          <Text style={styles.progressTitle}>Progress</Text>
-          <Text style={styles.progressPercent}>{Math.round(progress || 0)}%</Text>
-        </View>
-        <View style={styles.progressBarContainer}>
+        <Text style={styles.progressText}>Progress: {Math.round(progress || 0)}%</Text>
+        <View style={styles.progressBar}>
           <View
             style={[
-              styles.progressBarFill,
-              {
-                width: `${Math.min(100, Math.max(0, progress || 0))}%`,
-              },
+              styles.progressFill,
+              { width: `${Math.min(100, Math.max(0, progress || 0))}%` },
             ]}
           />
         </View>
         {estimatedTime && estimatedTime > 0 && (
-          <Text style={styles.estimatedTime}>
-            About {estimatedTime}s remaining
-          </Text>
+          <Text style={styles.timeText}>About {estimatedTime}s remaining</Text>
         )}
       </View>
 
-      {/* AI Activity Section */}
-      <View style={styles.activitySection}>
-        <Text style={styles.sectionTitle}>AI Activity</Text>
-        <View style={styles.messageList}>
-          {visibleMessages && visibleMessages.length > 0 ? (
-            visibleMessages.map((msg) => (
-              <View key={msg.id} style={styles.message}>
-                <Text style={styles.messageText}>{msg.message || ''}</Text>
-              </View>
-            ))
-          ) : (
-            <Text style={styles.emptyText}>Starting generation...</Text>
-          )}
-        </View>
+      {/* Messages */}
+      <View style={styles.messagesSection}>
+        <Text style={styles.sectionTitle}>Activity:</Text>
+        {messages && messages.length > 0 ? (
+          messages.slice(-5).map((msg) => (
+            <Text key={msg.id} style={styles.messageText}>
+              • {msg.message}
+            </Text>
+          ))
+        ) : (
+          <Text style={styles.emptyText}>Starting...</Text>
+        )}
       </View>
 
-      {/* File Tree Section */}
+      {/* File Count */}
       {fileTree && fileTree.length > 0 && (
-        <View style={styles.treeSection}>
-          <Text style={styles.sectionTitle}>File Tree</Text>
-          <View style={styles.treeList}>
-            {renderFileTree(fileTree)}
-          </View>
+        <View style={styles.filesSection}>
+          <Text style={styles.filesText}>
+            📁 {fileTree.length} files created
+          </Text>
         </View>
       )}
     </View>
@@ -207,152 +93,75 @@ export const StreamingConsole: React.FC<StreamingConsoleProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 24,
+    padding: 20,
+    backgroundColor: '#1A1A1A',
   },
-  headerSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 32,
-    paddingBottom: 20,
+  header: {
+    marginBottom: 24,
+    paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#2D2D2D',
+    borderBottomColor: '#333',
   },
-  headerIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 14,
-    backgroundColor: '#1E3A8A',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  headerTextContainer: {
-    flex: 1,
-  },
-  headerTitle: {
-    color: '#FFF',
+  title: {
     fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    color: '#AAA',
-    fontSize: 14,
-  },
-  progressSection: {
-    marginBottom: 28,
-  },
-  progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  progressTitle: {
     color: '#FFF',
-    fontSize: 17,
-    fontWeight: 'bold',
-  },
-  progressPercent: {
-    color: '#2EAADC',
-    fontSize: 22,
-    fontWeight: 'bold',
-  },
-  progressBarContainer: {
-    height: 10,
-    backgroundColor: '#2D2D2D',
-    borderRadius: 6,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: '#2EAADC',
-    borderRadius: 6,
-  },
-  progressBarGlow: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'transparent',
-  },
-  estimatedTime: {
-    color: '#AAA',
-    fontSize: 14,
-    marginTop: 10,
-    fontWeight: '500',
-  },
-  activitySection: {
-    marginBottom: 28,
-  },
-  sectionTitle: {
-    color: '#FFF',
-    fontSize: 17,
-    fontWeight: 'bold',
-    marginBottom: 14,
-  },
-  messageList: {
-    backgroundColor: '#252525',
-    borderRadius: 14,
-    padding: 18,
-    maxHeight: 220,
-    borderWidth: 1,
-    borderColor: '#2D2D2D',
-  },
-  message: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 14,
-  },
-  messageIcon: {
-    marginRight: 12,
-    marginTop: 3,
-  },
-  messageText: {
-    color: '#DDD',
-    fontSize: 15,
-    lineHeight: 22,
-    flex: 1,
-  },
-  cursor: {
-    color: '#2EAADC',
-    fontWeight: 'bold',
-  },
-  emptyText: {
-    color: '#666',
-    fontSize: 14,
-    fontStyle: 'italic',
-    textAlign: 'center',
-    paddingVertical: 20,
-  },
-  treeSection: {
-    flex: 1,
-  },
-  treeList: {
-    backgroundColor: '#252525',
-    borderRadius: 14,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: '#2D2D2D',
-  },
-  treeNode: {
     marginBottom: 8,
   },
-  treeNodeContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  treeIcon: {
-    marginHorizontal: 8,
-  },
-  treeNodeText: {
-    color: '#AAA',
+  subtitle: {
     fontSize: 14,
-    fontFamily: 'monospace',
+    color: '#AAA',
   },
-  treeNodeTextCompleted: {
+  progressSection: {
+    marginBottom: 24,
+  },
+  progressText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2EAADC',
+    marginBottom: 12,
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: '#333',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#2EAADC',
+  },
+  timeText: {
+    fontSize: 13,
+    color: '#AAA',
+    marginTop: 8,
+  },
+  messagesSection: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFF',
+    marginBottom: 12,
+  },
+  messageText: {
+    fontSize: 14,
     color: '#DDD',
+    marginBottom: 8,
+    paddingLeft: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  filesSection: {
+    marginTop: 16,
+  },
+  filesText: {
+    fontSize: 14,
+    color: '#0F7B6C',
+    fontWeight: '600',
   },
 });
