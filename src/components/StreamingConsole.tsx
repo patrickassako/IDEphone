@@ -155,67 +155,49 @@ export const StreamingConsole: React.FC<StreamingConsoleProps> = ({
       {/* Progress Section */}
       <View style={styles.progressSection}>
         <View style={styles.progressHeader}>
-          <Text style={styles.progressTitle}>📊 Progress</Text>
-          <Text style={styles.progressPercent}>{Math.round(progress)}%</Text>
+          <Text style={styles.progressTitle}>Progress</Text>
+          <Text style={styles.progressPercent}>{Math.round(progress || 0)}%</Text>
         </View>
         <View style={styles.progressBarContainer}>
-          <Animated.View
+          <View
             style={[
               styles.progressBarFill,
               {
-                width: `${progress}%`,
+                width: `${Math.min(100, Math.max(0, progress || 0))}%`,
               },
             ]}
           />
-          <View style={styles.progressBarGlow} />
         </View>
         {estimatedTime && estimatedTime > 0 && (
           <Text style={styles.estimatedTime}>
-            ⏱️ About {estimatedTime}s remaining
+            About {estimatedTime}s remaining
           </Text>
         )}
       </View>
 
       {/* AI Activity Section */}
       <View style={styles.activitySection}>
-        <Text style={styles.sectionTitle}>💬 AI Activity</Text>
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.messageList}
-          showsVerticalScrollIndicator={true}
-          nestedScrollEnabled={true}
-        >
-          {visibleMessages.map((msg) => (
-            <View
-              key={msg.id}
-              style={[
-                styles.message,
-                msg.indent && { marginLeft: msg.indent * 16 },
-              ]}
-            >
-              <Ionicons
-                name={msg.icon as any || getMessageIcon(msg.type)}
-                size={16}
-                color={getMessageColor(msg.type)}
-                style={styles.messageIcon}
-              />
-              <Text style={styles.messageText}>{msg.message}</Text>
-            </View>
-          ))}
-        </ScrollView>
+        <Text style={styles.sectionTitle}>AI Activity</Text>
+        <View style={styles.messageList}>
+          {visibleMessages && visibleMessages.length > 0 ? (
+            visibleMessages.map((msg) => (
+              <View key={msg.id} style={styles.message}>
+                <Text style={styles.messageText}>{msg.message || ''}</Text>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.emptyText}>Starting generation...</Text>
+          )}
+        </View>
       </View>
 
       {/* File Tree Section */}
-      {fileTree.length > 0 && (
+      {fileTree && fileTree.length > 0 && (
         <View style={styles.treeSection}>
-          <Text style={styles.sectionTitle}>📁 File Tree</Text>
-          <ScrollView
-            style={styles.treeList}
-            showsVerticalScrollIndicator={true}
-            nestedScrollEnabled={true}
-          >
+          <Text style={styles.sectionTitle}>File Tree</Text>
+          <View style={styles.treeList}>
             {renderFileTree(fileTree)}
-          </ScrollView>
+          </View>
         </View>
       )}
     </View>
@@ -337,6 +319,13 @@ const styles = StyleSheet.create({
   cursor: {
     color: '#2EAADC',
     fontWeight: 'bold',
+  },
+  emptyText: {
+    color: '#666',
+    fontSize: 14,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    paddingVertical: 20,
   },
   treeSection: {
     flex: 1,
