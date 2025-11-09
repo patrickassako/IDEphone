@@ -89,7 +89,7 @@ const AnimatedMessage: React.FC<{ message: StreamMessage; index: number }> = ({ 
         },
       ]}
     >
-      <Ionicons name={getIcon(message.type)} size={14} color={getColor(message.type)} style={styles.messageIcon} />
+      <Ionicons name={getIcon(message.type) as any} size={14} color={getColor(message.type)} style={styles.messageIcon} />
       <Text style={styles.messageText}>{message.message}</Text>
     </Animated.View>
   );

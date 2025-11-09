@@ -209,6 +209,7 @@ export class StreamingProjectGenerator {
         },
       }, null, 2),
       language: 'json',
+      action: 'create',
     });
 
     // Add README
@@ -216,6 +217,7 @@ export class StreamingProjectGenerator {
       path: 'README.md',
       content: `# ${config.description}\n\nGenerated with IDEphone AI Project Generator\n\n## Features\n\n- ${config.framework} framework\n- ${config.styling} styling\n${config.typescript ? '- TypeScript support\n' : ''}${config.tests ? '- Test suite included\n' : ''}\n\n## Getting Started\n\n\`\`\`bash\nnpm install\nnpm run dev\n\`\`\`\n`,
       language: 'markdown',
+      action: 'create',
     });
 
     // Add index.html
@@ -234,6 +236,7 @@ export class StreamingProjectGenerator {
   </body>
 </html>`,
       language: 'html',
+      action: 'create',
     });
 
     // Add src directory files
@@ -241,18 +244,21 @@ export class StreamingProjectGenerator {
       path: `src/main.${config.typescript ? 'tsx' : 'jsx'}`,
       content: `import React from 'react';\nimport ReactDOM from 'react-dom/client';\nimport App from './App';\nimport './index.css';\n\nReactDOM.createRoot(document.getElementById('root')${config.typescript ? '!' : ''}).render(\n  <React.StrictMode>\n    <App />\n  </React.StrictMode>\n);`,
       language: config.typescript ? 'typescript' : 'javascript',
+      action: 'create',
     });
 
     mockFiles.push({
       path: `src/App.${config.typescript ? 'tsx' : 'jsx'}`,
       content: `${config.typescript ? "import React from 'react';\n\n" : ''}function App() {\n  return (\n    <div className="app">\n      <h1>${config.description}</h1>\n      <p>Built with ${config.framework} and ${config.styling}</p>\n    </div>\n  );\n}\n\nexport default App;`,
       language: config.typescript ? 'typescript' : 'javascript',
+      action: 'create',
     });
 
     mockFiles.push({
       path: 'src/index.css',
       content: `* {\n  margin: 0;\n  padding: 0;\n  box-sizing: border-box;\n}\n\nbody {\n  font-family: system-ui, -apple-system, sans-serif;\n  background: #0f0f0f;\n  color: #fff;\n}\n\n.app {\n  min-height: 100vh;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n  padding: 2rem;\n}\n\nh1 {\n  font-size: 3rem;\n  margin-bottom: 1rem;\n  background: linear-gradient(135deg, #2eaadc 0%, #9f7aea 100%);\n  -webkit-background-clip: text;\n  -webkit-text-fill-color: transparent;\n}\n\np {\n  color: #aaa;\n  font-size: 1.2rem;\n}`,
       language: 'css',
+      action: 'create',
     });
 
     // Add component files
@@ -260,12 +266,14 @@ export class StreamingProjectGenerator {
       path: `src/components/Button.${config.typescript ? 'tsx' : 'jsx'}`,
       content: `${config.typescript ? "import React from 'react';\n\ninterface ButtonProps {\n  onClick?: () => void;\n  children: React.ReactNode;\n}\n\n" : ''}function Button(${config.typescript ? '{ onClick, children }: ButtonProps' : '{ onClick, children }'}) {\n  return (\n    <button onClick={onClick} className="button">\n      {children}\n    </button>\n  );\n}\n\nexport default Button;`,
       language: config.typescript ? 'typescript' : 'javascript',
+      action: 'create',
     });
 
     mockFiles.push({
       path: 'src/components/Card.' + (config.typescript ? 'tsx' : 'jsx'),
       content: `${config.typescript ? "import React from 'react';\n\ninterface CardProps {\n  title: string;\n  children: React.ReactNode;\n}\n\n" : ''}function Card(${config.typescript ? '{ title, children }: CardProps' : '{ title, children }'}) {\n  return (\n    <div className="card">\n      <h2>{title}</h2>\n      <div className="card-content">{children}</div>\n    </div>\n  );\n}\n\nexport default Card;`,
       language: config.typescript ? 'typescript' : 'javascript',
+      action: 'create',
     });
 
     // Add vite config
@@ -274,6 +282,7 @@ export class StreamingProjectGenerator {
         path: 'vite.config.' + (config.typescript ? 'ts' : 'js'),
         content: `import { defineConfig } from 'vite';\nimport react from '@vitejs/plugin-react';\n\nexport default defineConfig({\n  plugins: [react()],\n});`,
         language: config.typescript ? 'typescript' : 'javascript',
+        action: 'create',
       });
     }
 
@@ -303,6 +312,7 @@ export class StreamingProjectGenerator {
           references: [{ path: './tsconfig.node.json' }],
         }, null, 2),
         language: 'json',
+        action: 'create',
       });
     }
 
@@ -312,6 +322,7 @@ export class StreamingProjectGenerator {
         path: '.gitignore',
         content: `node_modules\ndist\n.env\n.DS_Store\n*.log`,
         language: 'text',
+        action: 'create',
       });
     }
 

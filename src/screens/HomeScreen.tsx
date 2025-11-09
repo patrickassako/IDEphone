@@ -25,6 +25,7 @@ import { StreamingConsole, StreamMessage, FileTreeNode } from '../components/Str
 import { StreamingProjectGenerator } from '../services/ai/StreamingProjectGenerator';
 import { ProjectSuccessScreen } from '../components/ProjectSuccessScreen';
 import { GeneratedFile } from '../services/ai/MultiFileGenerator';
+import { CodeViewer } from '../components/CodeViewer';
 
 interface HomeScreenProps {
   onProjectSelect: (repo: Repository) => void;
@@ -47,6 +48,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
   const [generationProgress, setGenerationProgress] = useState(0);
   const [estimatedTime, setEstimatedTime] = useState<number>();
   const [showSuccessScreen, setShowSuccessScreen] = useState(false);
+  const [showCodeViewer, setShowCodeViewer] = useState(false);
   const [completedProjectName, setCompletedProjectName] = useState('');
   const [completedFiles, setCompletedFiles] = useState<GeneratedFile[]>([]);
   const [completedConfig, setCompletedConfig] = useState<ProjectConfig | null>(null);
@@ -848,6 +850,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
                     handleOpenProject(completedRepo);
                   }
                 }}
+                onViewCode={() => {
+                  setShowCodeViewer(true);
+                }}
                 onClose={() => {
                   setShowProjectGenerator(false);
                   setShowSuccessScreen(false);
@@ -855,6 +860,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
               />
             </View>
           </View>
+        </Modal>
+      )}
+
+      {/* Code Viewer Modal */}
+      {showCodeViewer && completedFiles.length > 0 && (
+        <Modal visible={showCodeViewer} animationType="slide">
+          <CodeViewer
+            files={completedFiles}
+            onClose={() => setShowCodeViewer(false)}
+          />
         </Modal>
       )}
     </View>

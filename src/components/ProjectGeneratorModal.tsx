@@ -17,6 +17,7 @@ import {
   Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { PROJECT_TEMPLATES, ProjectTemplate as PresetTemplate } from '../data/projectTemplates';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const MODAL_HEIGHT = SCREEN_HEIGHT * 0.95;
@@ -47,6 +48,7 @@ export const ProjectGeneratorModal: React.FC<ProjectGeneratorModalProps> = ({
   onGenerate,
 }) => {
   const [slideAnim] = useState(new Animated.Value(MODAL_HEIGHT));
+  const [mode, setMode] = useState<'quick' | 'custom'>('quick');
   const [description, setDescription] = useState('');
   const [template, setTemplate] = useState<ProjectTemplate>('react');
   const [framework, setFramework] = useState<Framework>('vite');
@@ -72,6 +74,25 @@ export const ProjectGeneratorModal: React.FC<ProjectGeneratorModalProps> = ({
       }).start();
     }
   }, [visible]);
+
+  const handleTemplateSelect = (preset: PresetTemplate) => {
+    setDescription(preset.prompt);
+    setTemplate(preset.config.template);
+    setFramework(preset.config.framework);
+    setStyling(preset.config.styling);
+    setTypescript(preset.config.typescript);
+    setTests(preset.config.tests);
+    setGit(preset.config.git);
+    setMode('custom'); // Switch to custom mode to show config
+  };
+
+  const handleQuickStart = (preset: PresetTemplate) => {
+    const config: ProjectConfig = {
+      description: preset.prompt,
+      ...preset.config,
+    };
+    onGenerate(config);
+  };
 
   const handleGenerate = () => {
     if (description.trim().length === 0) return;
@@ -176,9 +197,101 @@ export const ProjectGeneratorModal: React.FC<ProjectGeneratorModalProps> = ({
             </TouchableOpacity>
           </View>
 
+          {/* Mode Toggle */}
+          <View style={styles.modeToggle}>
+            <TouchableOpacity
+              style={[styles.modeButton, mode === 'quick' && styles.modeButtonActive]}
+              onPress={() => setMode('quick')}
+            >
+              <Ionicons
+                name="flash"
+                size={18}
+                color={mode === 'quick' ? '#FFF' : '#AAA'}
+              />
+              <Text style={[styles.modeButtonText, mode === 'quick' && styles.modeButtonTextActive]}>
+                Quick Start
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modeButton, mode === 'custom' && styles.modeButtonActive]}
+              onPress={() => setMode('custom')}
+            >
+              <Ionicons
+                name="options"
+                size={18}
+                color={mode === 'custom' ? '#FFF' : '#AAA'}
+              />
+              <Text style={[styles.modeButtonText, mode === 'custom' && styles.modeButtonTextActive]}>
+                Custom
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-            {/* Description Input */}
-            <View style={styles.section}>
+            {/* Quick Start - Template Grid */}
+            {mode === 'quick' && (
+              <View style={styles.section}>
+                <Text style={styles.sectionLabel}>✨ Choose a Template</Text>
+                <Text style={styles.hint}>
+                  Select a pre-configured template to start instantly, or customize it to your needs.
+                </Text>
+                <View style={styles.templatesGrid}>
+                  {PROJECT_TEMPLATES.map((template) => (
+                    <View key={template.id} style={styles.presetCard}>
+                      <View style={[styles.presetHeader, { backgroundColor: template.color + '20' }]}>
+                        <Ionicons name={template.icon as any} size={40} color={template.color} />
+                        <View style={[styles.categoryBadge, { backgroundColor: template.color }]}>
+                          <Text style={styles.categoryBadgeText}>{template.category}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.presetBody}>
+                        <Text style={styles.presetName}>{template.name}</Text>
+                        <Text style={styles.presetDescription}>{template.description}</Text>
+
+                        {/* Tech Stack Tags */}
+                        <View style={styles.presetTags}>
+                          <View style={styles.presetTag}>
+                            <Text style={styles.presetTagText}>{template.config.framework}</Text>
+                          </View>
+                          <View style={styles.presetTag}>
+                            <Text style={styles.presetTagText}>{template.config.styling}</Text>
+                          </View>
+                          {template.config.typescript && (
+                            <View style={styles.presetTag}>
+                              <Text style={styles.presetTagText}>TS</Text>
+                            </View>
+                          )}
+                        </View>
+
+                        {/* Action Buttons */}
+                        <View style={styles.presetActions}>
+                          <TouchableOpacity
+                            style={styles.customizeButton}
+                            onPress={() => handleTemplateSelect(template)}
+                          >
+                            <Ionicons name="create-outline" size={16} color="#AAA" />
+                            <Text style={styles.customizeButtonText}>Customize</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.quickStartButton, { backgroundColor: template.color }]}
+                            onPress={() => handleQuickStart(template)}
+                          >
+                            <Ionicons name="flash" size={16} color="#FFF" />
+                            <Text style={styles.quickStartButtonText}>Quick Start</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* Custom Mode - Configuration Form */}
+            {mode === 'custom' && (
+              <>
+                {/* Description Input */}
+                <View style={styles.section}>
               <Text style={styles.sectionLabel}>📝 Describe Your Project</Text>
               <TextInput
                 style={styles.input}
@@ -324,6 +437,8 @@ export const ProjectGeneratorModal: React.FC<ProjectGeneratorModalProps> = ({
                 </TouchableOpacity>
               </View>
             </View>
+              </>
+            )}
           </ScrollView>
 
           {/* Footer */}
@@ -570,6 +685,135 @@ const styles = StyleSheet.create({
   generateButtonText: {
     color: '#FFF',
     fontSize: 16,
+    fontWeight: 'bold',
+  },
+  // Mode Toggle Styles
+  modeToggle: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    marginTop: 16,
+    marginBottom: 8,
+    backgroundColor: '#252525',
+    borderRadius: 12,
+    padding: 4,
+    gap: 6,
+  },
+  modeButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 10,
+    gap: 8,
+  },
+  modeButtonActive: {
+    backgroundColor: '#2EAADC',
+  },
+  modeButtonText: {
+    color: '#AAA',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  modeButtonTextActive: {
+    color: '#FFF',
+  },
+  // Template Grid Styles
+  templatesGrid: {
+    marginTop: 16,
+    gap: 16,
+  },
+  presetCard: {
+    backgroundColor: '#252525',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#2D2D2D',
+    overflow: 'hidden',
+  },
+  presetHeader: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  categoryBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  categoryBadgeText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+  },
+  presetBody: {
+    padding: 20,
+    paddingTop: 16,
+  },
+  presetName: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  presetDescription: {
+    color: '#AAA',
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  presetTags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  presetTag: {
+    backgroundColor: '#1E3A8A',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  presetTagText: {
+    color: '#2EAADC',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  presetActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  customizeButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2D2D2D',
+    paddingVertical: 12,
+    borderRadius: 10,
+    gap: 6,
+  },
+  customizeButtonText: {
+    color: '#AAA',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  quickStartButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 10,
+    gap: 6,
+  },
+  quickStartButtonText: {
+    color: '#FFF',
+    fontSize: 14,
     fontWeight: 'bold',
   },
 });

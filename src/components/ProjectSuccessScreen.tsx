@@ -16,6 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { GeneratedFile } from '../services/ai/MultiFileGenerator';
 import { ProjectConfig } from './ProjectGeneratorModal';
+import { SafeConfetti } from './SafeConfetti';
 
 interface ProjectSuccessScreenProps {
   projectName: string;
@@ -23,6 +24,7 @@ interface ProjectSuccessScreenProps {
   config: ProjectConfig;
   summary: string;
   onOpenProject: () => void;
+  onViewCode: () => void;
   onClose: () => void;
 }
 
@@ -32,17 +34,42 @@ export const ProjectSuccessScreen: React.FC<ProjectSuccessScreenProps> = ({
   config,
   summary,
   onOpenProject,
+  onViewCode,
   onClose,
 }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Simple fade in animation
+    // Fade in animation
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 300,
       useNativeDriver: true,
     }).start();
+
+    // Pulsing scale animation for success icon
+    Animated.sequence([
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(scaleAnim, {
+            toValue: 1.1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(scaleAnim, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      ),
+    ]).start();
   }, []);
 
   // Calculate statistics
@@ -61,6 +88,9 @@ export const ProjectSuccessScreen: React.FC<ProjectSuccessScreenProps> = ({
 
   return (
     <View style={styles.container}>
+      {/* Safe Confetti Animation */}
+      <SafeConfetti />
+
       <Animated.View
         style={[
           styles.content,
@@ -70,9 +100,16 @@ export const ProjectSuccessScreen: React.FC<ProjectSuccessScreenProps> = ({
         ]}
       >
         {/* Success Icon */}
-        <View style={styles.iconContainer}>
+        <Animated.View
+          style={[
+            styles.iconContainer,
+            {
+              transform: [{ scale: scaleAnim }],
+            },
+          ]}
+        >
           <Ionicons name="checkmark-circle" size={64} color="#0F7B6C" />
-        </View>
+        </Animated.View>
 
         {/* Title */}
         <Text style={styles.title}>Project Created! 🎉</Text>
@@ -130,6 +167,13 @@ export const ProjectSuccessScreen: React.FC<ProjectSuccessScreenProps> = ({
         </View>
 
         {/* Footer Buttons */}
+        <View style={styles.footerButtons}>
+          <TouchableOpacity style={styles.viewCodeButton} onPress={onViewCode}>
+            <Ionicons name="code-slash" size={18} color="#2EAADC" />
+            <Text style={styles.viewCodeButtonText}>View Code</Text>
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.footer}>
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <Text style={styles.closeButtonText}>Close</Text>
@@ -241,6 +285,26 @@ const styles = StyleSheet.create({
   tagText: {
     color: '#FFF',
     fontSize: 14,
+    fontWeight: '600',
+  },
+  footerButtons: {
+    width: '100%',
+    marginBottom: 12,
+  },
+  viewCodeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1E3A8A',
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#2EAADC',
+  },
+  viewCodeButtonText: {
+    color: '#2EAADC',
+    fontSize: 15,
     fontWeight: '600',
   },
   footer: {
