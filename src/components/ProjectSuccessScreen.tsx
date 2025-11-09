@@ -14,7 +14,6 @@ import {
   Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import ConfettiCannon from 'react-native-confetti-cannon';
 import { GeneratedFile } from '../services/ai/MultiFileGenerator';
 import { ProjectConfig } from './ProjectGeneratorModal';
 
@@ -35,30 +34,15 @@ export const ProjectSuccessScreen: React.FC<ProjectSuccessScreenProps> = ({
   onOpenProject,
   onClose,
 }) => {
-  const scaleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const confettiRef = useRef<any>(null);
 
   useEffect(() => {
-    // Celebration animation
-    Animated.parallel([
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        useNativeDriver: true,
-        tension: 50,
-        friction: 7,
-      }),
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    // Trigger confetti after a short delay
-    setTimeout(() => {
-      confettiRef.current?.start();
-    }, 300);
+    // Simple fade in animation
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
   }, []);
 
   // Calculate statistics
@@ -77,23 +61,10 @@ export const ProjectSuccessScreen: React.FC<ProjectSuccessScreenProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* Confetti Cannon */}
-      <ConfettiCannon
-        ref={confettiRef}
-        count={200}
-        origin={{ x: -10, y: 0 }}
-        autoStart={false}
-        fadeOut={true}
-        explosionSpeed={350}
-        fallSpeed={2500}
-        colors={['#2EAADC', '#9F7AEA', '#0F7B6C', '#E91E63', '#FFD700']}
-      />
-
       <Animated.View
         style={[
           styles.content,
           {
-            transform: [{ scale: scaleAnim }],
             opacity: fadeAnim,
           },
         ]}

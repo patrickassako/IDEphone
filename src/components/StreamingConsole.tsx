@@ -39,65 +39,24 @@ interface StreamingConsoleProps {
   onComplete?: () => void;
 }
 
-// Animated Tree Node Component with pop effect
-const AnimatedTreeNode: React.FC<{
+// Simple Tree Node Component (no animations for now)
+const SimpleTreeNode: React.FC<{
   node: FileTreeNode;
   depth: number;
 }> = ({ node, depth }) => {
-  const scaleAnim = useRef(new Animated.Value(0)).current;
-  const spinAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    // Pop animation when node appears
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      tension: 100,
-      friction: 8,
-      useNativeDriver: true,
-    }).start();
-  }, []);
-
-  useEffect(() => {
-    // Spinning animation for "creating" status
-    if (node.status === 'creating') {
-      Animated.loop(
-        Animated.timing(spinAnim, {
-          toValue: 1,
-          duration: 1000,
-          easing: Easing.linear,
-          useNativeDriver: true,
-        })
-      ).start();
-    }
-  }, [node.status]);
-
-  const spin = spinAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
-
   const getStatusIcon = (status: 'pending' | 'creating' | 'completed'): React.ReactNode => {
     switch (status) {
       case 'completed':
         return <Ionicons name="checkmark-circle" size={16} color="#0F7B6C" />;
       case 'creating':
-        return (
-          <Animated.View style={{ transform: [{ rotate: spin }] }}>
-            <Ionicons name="sync" size={16} color="#2EAADC" />
-          </Animated.View>
-        );
+        return <Ionicons name="sync" size={16} color="#2EAADC" />;
       case 'pending':
         return <Ionicons name="ellipse-outline" size={16} color="#666" />;
     }
   };
 
   return (
-    <Animated.View
-      style={[
-        styles.treeNode,
-        { marginLeft: depth * 20, transform: [{ scale: scaleAnim }] },
-      ]}
-    >
+    <View style={[styles.treeNode, { marginLeft: depth * 20 }]}>
       <View style={styles.treeNodeContent}>
         {getStatusIcon(node.status)}
         <Ionicons
@@ -115,7 +74,7 @@ const AnimatedTreeNode: React.FC<{
           {node.path.split('/').pop()}
         </Text>
       </View>
-    </Animated.View>
+    </View>
   );
 };
 
@@ -136,40 +95,10 @@ export const StreamingConsole: React.FC<StreamingConsoleProps> = ({
     }, 100);
   }, [messages.length]);
 
-  // Advanced typing effect for messages (character by character)
+  // Simple message update (no typing effect for now)
   useEffect(() => {
-    if (messages.length === 0) {
-      setVisibleMessages([]);
-      setTypingMessages({});
-      return;
-    }
-
-    const lastMessage = messages[messages.length - 1];
-    const alreadyVisible = visibleMessages.find((m) => m.id === lastMessage.id);
-
-    if (!alreadyVisible) {
-      // Add message to visible list
-      setVisibleMessages([...messages]);
-
-      // Start typing effect for new message
-      const fullText = lastMessage.message;
-      let currentIndex = 0;
-
-      const typeInterval = setInterval(() => {
-        currentIndex++;
-        setTypingMessages((prev) => ({
-          ...prev,
-          [lastMessage.id]: fullText.substring(0, currentIndex),
-        }));
-
-        if (currentIndex >= fullText.length) {
-          clearInterval(typeInterval);
-        }
-      }, 15); // 15ms per character for smooth typing
-
-      return () => clearInterval(typeInterval);
-    }
-  }, [messages.length]);
+    setVisibleMessages(messages);
+  }, [messages]);
 
   const getMessageIcon = (type: StreamMessage['type']): string => {
     switch (type) {
@@ -204,7 +133,7 @@ export const StreamingConsole: React.FC<StreamingConsoleProps> = ({
   const renderFileTree = (nodes: FileTreeNode[], depth = 0): React.ReactNode => {
     return nodes.map((node, index) => (
       <View key={`${node.path}-${index}`}>
-        <AnimatedTreeNode node={node} depth={depth} />
+        <SimpleTreeNode node={node} depth={depth} />
         {node.children && node.children.length > 0 && renderFileTree(node.children, depth + 1)}
       </View>
     ));
@@ -270,12 +199,7 @@ export const StreamingConsole: React.FC<StreamingConsoleProps> = ({
                 color={getMessageColor(msg.type)}
                 style={styles.messageIcon}
               />
-              <Text style={styles.messageText}>
-                {typingMessages[msg.id] || msg.message}
-                {typingMessages[msg.id] && typingMessages[msg.id].length < msg.message.length && (
-                  <Text style={styles.cursor}>▊</Text>
-                )}
-              </Text>
+              <Text style={styles.messageText}>{msg.message}</Text>
             </View>
           ))}
         </ScrollView>
