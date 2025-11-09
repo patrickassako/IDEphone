@@ -156,7 +156,7 @@ export const ProjectSuccessScreen: React.FC<ProjectSuccessScreenProps> = ({
 
             {config.typescript && (
               <View style={styles.summaryItem}>
-                <Ionicons name="logo-typescript" size={18} color="#3178C6" />
+                <Ionicons name="code-slash" size={18} color="#3178C6" />
                 <View style={styles.summaryItemText}>
                   <Text style={styles.summaryLabel}>TypeScript</Text>
                   <Text style={styles.summaryValue}>Enabled</Text>
@@ -176,7 +176,7 @@ export const ProjectSuccessScreen: React.FC<ProjectSuccessScreenProps> = ({
 
             {config.git && (
               <View style={styles.summaryItem}>
-                <Ionicons name="logo-github" size={18} color="#FFF" />
+                <Ionicons name="git-branch" size={18} color="#FFF" />
                 <View style={styles.summaryItemText}>
                   <Text style={styles.summaryLabel}>Git</Text>
                   <Text style={styles.summaryValue}>Initialized</Text>

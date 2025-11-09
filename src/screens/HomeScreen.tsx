@@ -566,7 +566,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
 
             // Create project directory
             const baseDir = FileSystemService.getBaseDir();
-            const projectPath = `${baseDir}/${projectName}`;
+            // Remove trailing slash from baseDir if present
+            const cleanBaseDir = baseDir.endsWith('/') ? baseDir.slice(0, -1) : baseDir;
+            const projectPath = `${cleanBaseDir}/${projectName}`;
 
             // Ensure project directory exists
             await FileSystemService.ensureDirectoryExists(projectPath);
