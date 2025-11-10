@@ -11,6 +11,9 @@ import { AIResultModal } from '../components/AIResultModal';
 import { FilePreviewModal } from '../components/FilePreviewModal';
 import { ProjectGeneratorModal, ProjectConfig } from '../components/ProjectGeneratorModal';
 import { StreamingConsole, StreamMessage, FileTreeNode } from '../components/StreamingConsole';
+import { RunProjectModal } from '../components/RunProjectModal';
+import { WebPreview } from '../components/WebPreview';
+import { CodeViewer } from '../components/CodeViewer';
 import { useEditor } from '../contexts/EditorContext';
 import { FileItem, TabItem } from '../types';
 import { FileSystemService } from '../services/FileSystemService';
@@ -54,7 +57,13 @@ export const EditorScreen: React.FC = () => {
   const [generationProgress, setGenerationProgress] = useState(0);
   const [estimatedTime, setEstimatedTime] = useState<number>();
 
-  const { tabs, activeTabId, addTab, removeTab, updateTab, setActiveTab, getActiveTab } =
+  // Project Testing states
+  const [showRunProject, setShowRunProject] = useState(false);
+  const [showWebPreview, setShowWebPreview] = useState(false);
+  const [showCodeViewer, setShowCodeViewer] = useState(false);
+  const [projectFiles, setProjectFiles] = useState<GeneratedFile[]>([]);
+
+  const { tabs, activeTabId, addTab, removeTab, updateTab, setActiveTab, getActiveTab, rootPath, currentRepository } =
     useEditor();
 
   useEffect(() => {
@@ -273,6 +282,70 @@ export const EditorScreen: React.FC = () => {
     }
   };
 
+  // Load all project files for testing
+  const loadProjectFiles = async (): Promise<GeneratedFile[]> => {
+    if (!rootPath) return [];
+
+    try {
+      const files: GeneratedFile[] = [];
+
+      // Recursively read all files from the project
+      const readDirectory = async (dirPath: string) => {
+        const items = await FileSystemService.readDirectory(dirPath);
+
+        for (const item of items) {
+          if (item.type === 'file') {
+            // Skip node_modules, .git, and other ignored directories
+            if (item.path.includes('node_modules') || item.path.includes('.git')) {
+              continue;
+            }
+
+            try {
+              const content = await FileSystemService.readFile(item.path);
+              const language = FileSystemService.getLanguageFromFileName(item.name);
+
+              // Get relative path
+              const relativePath = item.path.replace(rootPath + '/', '');
+
+              files.push({
+                path: relativePath,
+                content,
+                language,
+                action: 'create',
+              });
+            } catch (error) {
+              console.error(`Error reading file ${item.path}:`, error);
+            }
+          } else if (item.type === 'directory') {
+            // Skip ignored directories
+            if (item.name === 'node_modules' || item.name === '.git' || item.name === 'dist' || item.name === 'build') {
+              continue;
+            }
+
+            await readDirectory(item.path);
+          }
+        }
+      };
+
+      await readDirectory(rootPath);
+      return files;
+    } catch (error) {
+      console.error('Error loading project files:', error);
+      return [];
+    }
+  };
+
+  const handleTestProject = async () => {
+    const files = await loadProjectFiles();
+    if (files.length === 0) {
+      alert('No files found in project');
+      return;
+    }
+
+    setProjectFiles(files);
+    setShowRunProject(true);
+  };
+
   const handleGenerateProject = async (config: ProjectConfig) => {
     // Reset states
     setStreamMessages([]);
@@ -429,6 +502,16 @@ export const EditorScreen: React.FC = () => {
             <Text style={[styles.toolbarButtonText, styles.projectButtonText]}>New Project</Text>
           </TouchableOpacity>
         )}
+
+        {rootPath && currentRepository && (
+          <TouchableOpacity
+            style={[styles.toolbarButton, styles.testButton]}
+            onPress={handleTestProject}
+          >
+            <Ionicons name="play-circle" size={20} color="#0F7B6C" />
+            <Text style={[styles.toolbarButtonText, styles.testButtonText]}>Test Live</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.mainContent}>
@@ -555,6 +638,44 @@ export const EditorScreen: React.FC = () => {
           </View>
         </Modal>
       )}
+
+      {/* Run Project Modal */}
+      {showRunProject && projectFiles.length > 0 && currentRepository && (
+        <RunProjectModal
+          visible={showRunProject}
+          projectName={currentRepository.name}
+          files={projectFiles}
+          config={{
+            description: currentRepository.name,
+            template: 'react',
+            framework: 'vite',
+            styling: 'tailwind',
+            typescript: true,
+            tests: false,
+            git: false,
+          }}
+          onClose={() => setShowRunProject(false)}
+        />
+      )}
+
+      {/* Web Preview Modal */}
+      {showWebPreview && rootPath && currentRepository && (
+        <WebPreview
+          projectPath={rootPath}
+          projectName={currentRepository.name}
+          onClose={() => setShowWebPreview(false)}
+        />
+      )}
+
+      {/* Code Viewer Modal */}
+      {showCodeViewer && projectFiles.length > 0 && (
+        <Modal visible={showCodeViewer} animationType="slide">
+          <CodeViewer
+            files={projectFiles}
+            onClose={() => setShowCodeViewer(false)}
+          />
+        </Modal>
+      )}
     </View>
   );
 };
@@ -601,6 +722,13 @@ const styles = StyleSheet.create({
   },
   projectButtonText: {
     color: '#2EAADC',
+  },
+  testButton: {
+    borderColor: '#0F7B6C',
+    backgroundColor: '#0F7B6C',
+  },
+  testButtonText: {
+    color: '#FFF',
   },
   streamingContainer: {
     flex: 1,
