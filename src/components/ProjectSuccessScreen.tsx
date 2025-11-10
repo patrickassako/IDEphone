@@ -23,8 +23,10 @@ interface ProjectSuccessScreenProps {
   files: GeneratedFile[];
   config: ProjectConfig;
   summary: string;
+  projectPath?: string;
   onOpenProject: () => void;
   onViewCode: () => void;
+  onPreview?: () => void;
   onClose: () => void;
 }
 
@@ -33,8 +35,10 @@ export const ProjectSuccessScreen: React.FC<ProjectSuccessScreenProps> = ({
   files,
   config,
   summary,
+  projectPath,
   onOpenProject,
   onViewCode,
+  onPreview,
   onClose,
 }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -168,7 +172,21 @@ export const ProjectSuccessScreen: React.FC<ProjectSuccessScreenProps> = ({
 
         {/* Footer Buttons */}
         <View style={styles.footerButtons}>
-          <TouchableOpacity style={styles.viewCodeButton} onPress={onViewCode}>
+          {/* Show preview button for web projects */}
+          {(config.template === 'web' || config.template === 'react' || config.template === 'fullstack') && onPreview && (
+            <TouchableOpacity style={styles.previewButton} onPress={onPreview}>
+              <Ionicons name="phone-portrait-outline" size={18} color="#FFF" />
+              <Text style={styles.previewButtonText}>Preview</Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={[
+              styles.viewCodeButton,
+              (config.template === 'web' || config.template === 'react' || config.template === 'fullstack') && onPreview && styles.viewCodeButtonHalf
+            ]}
+            onPress={onViewCode}
+          >
             <Ionicons name="code-slash" size={18} color="#2EAADC" />
             <Text style={styles.viewCodeButtonText}>View Code</Text>
           </TouchableOpacity>
@@ -290,8 +308,26 @@ const styles = StyleSheet.create({
   footerButtons: {
     width: '100%',
     marginBottom: 12,
+    flexDirection: 'row',
+    gap: 12,
+  },
+  previewButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#9F7AEA',
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+  },
+  previewButtonText: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: '600',
   },
   viewCodeButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -301,6 +337,9 @@ const styles = StyleSheet.create({
     gap: 8,
     borderWidth: 1,
     borderColor: '#2EAADC',
+  },
+  viewCodeButtonHalf: {
+    flex: 1,
   },
   viewCodeButtonText: {
     color: '#2EAADC',
