@@ -504,13 +504,38 @@ export const EditorScreen: React.FC = () => {
         )}
 
         {rootPath && currentRepository && (
-          <TouchableOpacity
-            style={[styles.toolbarButton, styles.testButton]}
-            onPress={handleTestProject}
-          >
-            <Ionicons name="play-circle" size={20} color="#0F7B6C" />
-            <Text style={[styles.toolbarButtonText, styles.testButtonText]}>Test Live</Text>
-          </TouchableOpacity>
+          <>
+            {/* Preview Button - For web projects with HTML */}
+            <TouchableOpacity
+              style={[styles.toolbarButton, styles.previewButton]}
+              onPress={() => setShowWebPreview(true)}
+            >
+              <Ionicons name="phone-portrait-outline" size={20} color="#9333EA" />
+              <Text style={[styles.toolbarButtonText, styles.previewButtonText]}>Preview</Text>
+            </TouchableOpacity>
+
+            {/* View Code Button */}
+            <TouchableOpacity
+              style={[styles.toolbarButton, styles.viewCodeButton]}
+              onPress={async () => {
+                const files = await loadProjectFiles();
+                setProjectFiles(files);
+                setShowCodeViewer(true);
+              }}
+            >
+              <Ionicons name="code-slash" size={20} color="#3B82F6" />
+              <Text style={[styles.toolbarButtonText, styles.viewCodeButtonText]}>View Code</Text>
+            </TouchableOpacity>
+
+            {/* Test Live Button */}
+            <TouchableOpacity
+              style={[styles.toolbarButton, styles.testButton]}
+              onPress={handleTestProject}
+            >
+              <Ionicons name="play-circle" size={20} color="#0F7B6C" />
+              <Text style={[styles.toolbarButtonText, styles.testButtonText]}>Test Live</Text>
+            </TouchableOpacity>
+          </>
         )}
       </View>
 
@@ -722,6 +747,19 @@ const styles = StyleSheet.create({
   },
   projectButtonText: {
     color: '#2EAADC',
+  },
+  previewButton: {
+    borderColor: '#9333EA',
+    backgroundColor: '#9333EA',
+  },
+  previewButtonText: {
+    color: '#FFF',
+  },
+  viewCodeButton: {
+    borderColor: '#3B82F6',
+  },
+  viewCodeButtonText: {
+    color: '#3B82F6',
   },
   testButton: {
     borderColor: '#0F7B6C',
