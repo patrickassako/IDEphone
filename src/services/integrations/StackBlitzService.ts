@@ -8,6 +8,7 @@ import { GeneratedFile } from '../ai/MultiFileGenerator';
 import { ProjectConfig } from '../../components/ProjectGeneratorModal';
 import { Linking } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
+import * as FileSystem from 'expo-file-system';
 
 export interface StackBlitzProject {
   title: string;
@@ -364,11 +365,17 @@ export class StackBlitzService {
 
         const formHtml = this.createCodeSandboxFormHtml(parametersBase64);
 
-        // Create data URI
-        const dataUri = `data:text/html;base64,${this.base64Encode(formHtml)}`;
+        // Save HTML to temporary file (expo-web-browser can't open data URIs)
+        const tempFilePath = `${FileSystem.cacheDirectory}codesandbox-loader.html`;
+        await FileSystem.writeAsStringAsync(tempFilePath, formHtml, {
+          encoding: FileSystem.EncodingType.UTF8,
+        });
 
         console.log('Opening CodeSandbox with custom files...');
-        await WebBrowser.openBrowserAsync(dataUri);
+        console.log('Temp file:', tempFilePath);
+
+        // Open the local HTML file in browser
+        await WebBrowser.openBrowserAsync(tempFilePath);
       } else {
         // StackBlitz: Opens a starter template (files not included)
         console.warn('⚠️ StackBlitz from mobile opens template only. Your custom files won\'t be included.');
