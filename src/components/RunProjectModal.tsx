@@ -95,7 +95,45 @@ export const RunProjectModal: React.FC<RunProjectModalProps> = ({
 
             {/* IDE Options */}
             <View style={styles.ideOptions}>
-              {/* StackBlitz */}
+              {/* CodeSandbox - Recommended */}
+              <TouchableOpacity
+                style={[styles.ideCard, styles.recommendedCard]}
+                onPress={() => handleOpenIDE('codesandbox')}
+                disabled={isOpening}
+              >
+                <View style={[styles.ideIcon, { backgroundColor: '#15161820' }]}>
+                  <Ionicons name="cube" size={32} color="#151618" />
+                </View>
+                <View style={styles.ideInfo}>
+                  <View style={styles.nameRow}>
+                    <Text style={styles.ideName}>CodeSandbox</Text>
+                    <View style={styles.recommendedBadge}>
+                      <Text style={styles.recommendedText}>RECOMMENDED</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.ideDescription}>
+                    Includes YOUR custom code! Great UI, excellent for sharing
+                  </Text>
+                  <View style={styles.ideFeatures}>
+                    <View style={styles.featureBadge}>
+                      <Ionicons name="checkmark-circle" size={14} color="#0F7B6C" />
+                      <Text style={styles.featureText}>Custom files included</Text>
+                    </View>
+                    <View style={styles.featureBadge}>
+                      <Ionicons name="checkmark-circle" size={14} color="#0F7B6C" />
+                      <Text style={styles.featureText}>Easy sharing</Text>
+                    </View>
+                  </View>
+                </View>
+                {isOpening && selectedService === 'codesandbox' && (
+                  <ActivityIndicator size="small" color="#151618" />
+                )}
+                {!isOpening && (
+                  <Ionicons name="arrow-forward" size={20} color="#0F7B6C" />
+                )}
+              </TouchableOpacity>
+
+              {/* StackBlitz - Template Only */}
               <TouchableOpacity
                 style={styles.ideCard}
                 onPress={() => handleOpenIDE('stackblitz')}
@@ -107,7 +145,7 @@ export const RunProjectModal: React.FC<RunProjectModalProps> = ({
                 <View style={styles.ideInfo}>
                   <Text style={styles.ideName}>StackBlitz</Text>
                   <Text style={styles.ideDescription}>
-                    Fast, runs Node.js in browser, instant hot reload
+                    ⚠️ Opens starter template only (your code not included)
                   </Text>
                   <View style={styles.ideFeatures}>
                     <View style={styles.featureBadge}>
@@ -122,39 +160,6 @@ export const RunProjectModal: React.FC<RunProjectModalProps> = ({
                 </View>
                 {isOpening && selectedService === 'stackblitz' && (
                   <ActivityIndicator size="small" color="#1389FD" />
-                )}
-                {!isOpening && (
-                  <Ionicons name="arrow-forward" size={20} color="#666" />
-                )}
-              </TouchableOpacity>
-
-              {/* CodeSandbox */}
-              <TouchableOpacity
-                style={styles.ideCard}
-                onPress={() => handleOpenIDE('codesandbox')}
-                disabled={isOpening}
-              >
-                <View style={[styles.ideIcon, { backgroundColor: '#15161820' }]}>
-                  <Ionicons name="cube" size={32} color="#151618" />
-                </View>
-                <View style={styles.ideInfo}>
-                  <Text style={styles.ideName}>CodeSandbox</Text>
-                  <Text style={styles.ideDescription}>
-                    Popular, great UI, excellent for sharing
-                  </Text>
-                  <View style={styles.ideFeatures}>
-                    <View style={styles.featureBadge}>
-                      <Ionicons name="checkmark-circle" size={14} color="#0F7B6C" />
-                      <Text style={styles.featureText}>Easy sharing</Text>
-                    </View>
-                    <View style={styles.featureBadge}>
-                      <Ionicons name="checkmark-circle" size={14} color="#0F7B6C" />
-                      <Text style={styles.featureText}>Beautiful UI</Text>
-                    </View>
-                  </View>
-                </View>
-                {isOpening && selectedService === 'codesandbox' && (
-                  <ActivityIndicator size="small" color="#151618" />
                 )}
                 {!isOpening && (
                   <Ionicons name="arrow-forward" size={20} color="#666" />
@@ -249,6 +254,11 @@ const styles = StyleSheet.create({
     borderColor: '#2D2D2D',
     gap: 16,
   },
+  recommendedCard: {
+    borderColor: '#0F7B6C',
+    borderWidth: 2,
+    backgroundColor: '#0F7B6C10',
+  },
   ideIcon: {
     width: 56,
     height: 56,
@@ -259,11 +269,28 @@ const styles = StyleSheet.create({
   ideInfo: {
     flex: 1,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
   ideName: {
     color: '#FFF',
     fontSize: 16,
     fontWeight: 'bold',
-    marginBottom: 4,
+  },
+  recommendedBadge: {
+    backgroundColor: '#0F7B6C',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  recommendedText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
   },
   ideDescription: {
     color: '#AAA',

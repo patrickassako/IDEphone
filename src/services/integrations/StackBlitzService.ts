@@ -18,6 +18,30 @@ export interface StackBlitzProject {
 
 export class StackBlitzService {
   /**
+   * Base64 encode a string (React Native compatible)
+   * Uses custom implementation since btoa is not available in React Native
+   */
+  private static base64Encode(str: string): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+    let output = '';
+
+    for (let i = 0; i < str.length; i += 3) {
+      const a = str.charCodeAt(i);
+      const b = i + 1 < str.length ? str.charCodeAt(i + 1) : 0;
+      const c = i + 2 < str.length ? str.charCodeAt(i + 2) : 0;
+
+      const bitmap = (a << 16) | (b << 8) | c;
+
+      output += chars[(bitmap >> 18) & 63];
+      output += chars[(bitmap >> 12) & 63];
+      output += i + 1 < str.length ? chars[(bitmap >> 6) & 63] : '=';
+      output += i + 2 < str.length ? chars[bitmap & 63] : '=';
+    }
+
+    return output;
+  }
+
+  /**
    * Opens a project in StackBlitz
    * Creates a new project from generated files and opens it in the browser
    */
@@ -79,30 +103,31 @@ export class StackBlitzService {
   }
 
   /**
-   * Create StackBlitz project URL using embed API
-   * More reliable for opening from mobile
+   * Create StackBlitz project URL using GitHub approach
+   * Since we can't POST from mobile, we use a pre-configured template
+   * NOTE: This won't include custom files - recommend using CodeSandbox instead
    */
   static createEmbedUrl(
     projectName: string,
     files: GeneratedFile[],
     config: ProjectConfig
   ): string {
-    // Create a minimal Vite React project structure
+    // Use StackBlitz starter templates
     const template = this.getStackBlitzTemplate(config);
 
-    // Build query parameters
-    const params = new URLSearchParams({
-      title: projectName,
-      description: config.description || 'Generated with IDEphone',
-      file: 'src/App.tsx', // Open main file by default
-    });
+    // Map to actual StackBlitz starter projects
+    const templateMap: { [key: string]: string } = {
+      react: 'vitejs/vite/tree/main/packages/create-vite/template-react',
+      typescript: 'vitejs/vite/tree/main/packages/create-vite/template-react-ts',
+      node: 'stackblitz/sdk/tree/main/templates/node',
+      javascript: 'vitejs/vite/tree/main/packages/create-vite/template-vanilla',
+    };
 
-    // For Vite React projects
-    if (template === 'react') {
-      return `https://stackblitz.com/edit/vitejs-vite-${this.generateId()}?${params.toString()}`;
-    }
+    const githubPath = templateMap[template] || templateMap.react;
 
-    return `https://stackblitz.com/edit/${template}-${this.generateId()}?${params.toString()}`;
+    // Open StackBlitz with a starter template
+    // Note: Custom files won't be included - this is a limitation when opening from mobile
+    return `https://stackblitz.com/github/${githubPath}?title=${encodeURIComponent(projectName)}`;
   }
 
   /**
@@ -134,6 +159,7 @@ export class StackBlitzService {
   /**
    * Create a CodeSandbox URL as alternative
    * CodeSandbox also works well from mobile
+   * Uses proper base64 encoding compatible with React Native
    */
   static createCodeSandboxUrl(
     projectName: string,
@@ -152,33 +178,43 @@ export class StackBlitzService {
       files: sandboxFiles,
     };
 
-    // Encode as JSON and base64
+    // Encode as JSON and base64 (React Native compatible)
     const parametersJson = JSON.stringify(parameters);
-    const parametersBase64 = Buffer.from(parametersJson).toString('base64');
+
+    // URL encode for safe base64 encoding
+    const parametersBase64 = this.base64Encode(parametersJson);
 
     return `https://codesandbox.io/api/v1/sandboxes/define?parameters=${parametersBase64}`;
   }
 
   /**
    * Open project in browser-based IDE
-   * Tries multiple services for best compatibility
+   *
+   * IMPORTANT:
+   * - CodeSandbox: Uploads your custom files ✅ (Recommended)
+   * - StackBlitz: Opens template only, custom files NOT included ⚠️
+   *
+   * For full code preview with your generated files, use CodeSandbox
    */
   static async openInBrowserIDE(
     projectName: string,
     files: GeneratedFile[],
     config: ProjectConfig,
-    service: 'stackblitz' | 'codesandbox' = 'stackblitz'
+    service: 'stackblitz' | 'codesandbox' = 'codesandbox' // Changed default to codesandbox
   ): Promise<void> {
     try {
       let url: string;
 
       if (service === 'codesandbox') {
+        // CodeSandbox: Creates a real sandbox with your files
         url = this.createCodeSandboxUrl(projectName, files, config);
       } else {
-        // StackBlitz
+        // StackBlitz: Opens a starter template (files not included)
+        console.warn('⚠️ StackBlitz from mobile opens template only. Your custom files won\'t be included.');
         url = this.createEmbedUrl(projectName, files, config);
       }
 
+      console.log(`Opening project in ${service}...`);
       await Linking.openURL(url);
     } catch (error) {
       console.error(`Error opening ${service}:`, error);
