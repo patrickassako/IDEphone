@@ -27,6 +27,7 @@ import { ProjectSuccessScreen } from '../components/ProjectSuccessScreen';
 import { GeneratedFile } from '../services/ai/MultiFileGenerator';
 import { CodeViewer } from '../components/CodeViewer';
 import { WebPreview } from '../components/WebPreview';
+import { RunProjectModal } from '../components/RunProjectModal';
 
 interface HomeScreenProps {
   onProjectSelect: (repo: Repository) => void;
@@ -51,6 +52,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
   const [showSuccessScreen, setShowSuccessScreen] = useState(false);
   const [showCodeViewer, setShowCodeViewer] = useState(false);
   const [showWebPreview, setShowWebPreview] = useState(false);
+  const [showRunProject, setShowRunProject] = useState(false);
   const [completedProjectName, setCompletedProjectName] = useState('');
   const [completedFiles, setCompletedFiles] = useState<GeneratedFile[]>([]);
   const [completedConfig, setCompletedConfig] = useState<ProjectConfig | null>(null);
@@ -859,6 +861,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
                 onPreview={() => {
                   setShowWebPreview(true);
                 }}
+                onRunProject={() => {
+                  setShowRunProject(true);
+                }}
                 onClose={() => {
                   setShowProjectGenerator(false);
                   setShowSuccessScreen(false);
@@ -885,6 +890,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
           projectPath={completedRepo.path}
           projectName={completedProjectName}
           onClose={() => setShowWebPreview(false)}
+        />
+      )}
+
+      {/* Run Project Modal */}
+      {showRunProject && completedConfig && (
+        <RunProjectModal
+          visible={showRunProject}
+          projectName={completedProjectName}
+          files={completedFiles}
+          config={completedConfig}
+          onClose={() => setShowRunProject(false)}
         />
       )}
     </View>

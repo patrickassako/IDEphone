@@ -27,6 +27,7 @@ interface ProjectSuccessScreenProps {
   onOpenProject: () => void;
   onViewCode: () => void;
   onPreview?: () => void;
+  onRunProject?: () => void;
   onClose: () => void;
 }
 
@@ -39,6 +40,7 @@ export const ProjectSuccessScreen: React.FC<ProjectSuccessScreenProps> = ({
   onOpenProject,
   onViewCode,
   onPreview,
+  onRunProject,
   onClose,
 }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -192,12 +194,26 @@ export const ProjectSuccessScreen: React.FC<ProjectSuccessScreenProps> = ({
           </TouchableOpacity>
         </View>
 
+        {/* Run Project Button for Web Projects */}
+        {(config.template === 'web' || config.template === 'react' || config.template === 'fullstack') && onRunProject && (
+          <View style={styles.runProjectContainer}>
+            <TouchableOpacity style={styles.runProjectButton} onPress={onRunProject}>
+              <Ionicons name="play-circle" size={24} color="#FFF" />
+              <View style={styles.runProjectTextContainer}>
+                <Text style={styles.runProjectText}>Test Project Live</Text>
+                <Text style={styles.runProjectSubtext}>Run in StackBlitz or CodeSandbox</Text>
+              </View>
+              <Ionicons name="arrow-forward" size={20} color="#FFF" />
+            </TouchableOpacity>
+          </View>
+        )}
+
         <View style={styles.footer}>
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <Text style={styles.closeButtonText}>Close</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.openButton} onPress={onOpenProject}>
-            <Text style={styles.openButtonText}>Open Project</Text>
+            <Text style={styles.openButtonText}>Open in IDE</Text>
             <Ionicons name="arrow-forward" size={20} color="#FFF" />
           </TouchableOpacity>
         </View>
@@ -345,6 +361,38 @@ const styles = StyleSheet.create({
     color: '#2EAADC',
     fontSize: 15,
     fontWeight: '600',
+  },
+  runProjectContainer: {
+    width: '100%',
+    marginBottom: 16,
+  },
+  runProjectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#0F7B6C',
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+    shadowColor: '#0F7B6C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  runProjectTextContainer: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  runProjectText: {
+    color: '#FFF',
+    fontSize: 17,
+    fontWeight: 'bold',
+  },
+  runProjectSubtext: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 13,
+    marginTop: 2,
   },
   footer: {
     flexDirection: 'row',
