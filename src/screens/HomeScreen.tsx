@@ -838,7 +838,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
       </Modal>
 
       {/* Success Screen Modal */}
-      {showSuccessScreen && completedConfig && (
+      {showSuccessScreen && completedConfig && !showCodeViewer && !showWebPreview && !showRunProject && (
         <Modal transparent visible={showSuccessScreen} animationType="fade">
           <View style={styles.streamingContainer}>
             <View style={styles.streamingContent}>
@@ -856,12 +856,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onProjectSelect }) => {
                   }
                 }}
                 onViewCode={() => {
+                  console.log('Opening Code Viewer');
                   setShowCodeViewer(true);
                 }}
                 onPreview={() => {
+                  console.log('Opening Web Preview');
                   setShowWebPreview(true);
                 }}
                 onRunProject={() => {
+                  console.log('Opening Run Project Modal');
                   setShowRunProject(true);
                 }}
                 onClose={() => {
