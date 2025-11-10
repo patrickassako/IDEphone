@@ -8,7 +8,7 @@ import { GeneratedFile } from '../ai/MultiFileGenerator';
 import { ProjectConfig } from '../../components/ProjectGeneratorModal';
 import { Linking } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystemLegacy from 'expo-file-system/legacy';
 
 export interface StackBlitzProject {
   title: string;
@@ -366,8 +366,8 @@ export class StackBlitzService {
         const formHtml = this.createCodeSandboxFormHtml(parametersBase64);
 
         // Save HTML to temporary file (expo-web-browser can't open data URIs)
-        const tempFilePath = `${FileSystem.cacheDirectory}codesandbox-loader.html`;
-        await FileSystem.writeAsStringAsync(tempFilePath, formHtml);
+        const tempFilePath = `${FileSystemLegacy.cacheDirectory}codesandbox-loader.html`;
+        await FileSystemLegacy.writeAsStringAsync(tempFilePath, formHtml);
 
         console.log('Opening CodeSandbox with custom files...');
         console.log('Temp file:', tempFilePath);
