@@ -1,7 +1,7 @@
 /**
  * Run Project Modal
  * Allows users to run/test projects in browser-based IDEs
- * Supports StackBlitz and CodeSandbox
+ * Shows preview in WebView INSIDE the app (like Lovable.dev)
  */
 
 import React, { useState } from 'react';
@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { GeneratedFile } from '../services/ai/MultiFileGenerator';
 import { ProjectConfig } from './ProjectGeneratorModal';
 import { StackBlitzService } from '../services/integrations/StackBlitzService';
+import { LivePreviewPanel } from './LivePreviewPanel';
 
 interface RunProjectModalProps {
   visible: boolean;
@@ -25,6 +26,7 @@ interface RunProjectModalProps {
   files: GeneratedFile[];
   config: ProjectConfig;
   onClose: () => void;
+  onLivePreviewReady?: (sandboxData: { sandboxId: string; embedUrl: string }) => void;
 }
 
 type IDEService = 'stackblitz' | 'codesandbox';
@@ -35,6 +37,7 @@ export const RunProjectModal: React.FC<RunProjectModalProps> = ({
   files,
   config,
   onClose,
+  onLivePreviewReady,
 }) => {
   const [isOpening, setIsOpening] = useState(false);
   const [selectedService, setSelectedService] = useState<IDEService | null>(null);
@@ -44,23 +47,23 @@ export const RunProjectModal: React.FC<RunProjectModalProps> = ({
       setIsOpening(true);
       setSelectedService(service);
 
-      await StackBlitzService.openInBrowserIDE(projectName, files, config, service);
+      const result = await StackBlitzService.openInBrowserIDE(projectName, files, config, service);
 
-      Alert.alert(
-        'Opening in Browser',
-        `Your project is opening in ${service === 'stackblitz' ? 'StackBlitz' : 'CodeSandbox'}. You can now test it with full functionality!`,
-        [{ text: 'OK' }]
-      );
-
-      // Close modal after opening
-      setTimeout(() => {
-        onClose();
-      }, 1000);
-    } catch (error) {
+      if (result && result.embedUrl) {
+        // Notify parent that live preview is ready
+        if (onLivePreviewReady) {
+          onLivePreviewReady({
+            sandboxId: result.sandboxId,
+            embedUrl: result.embedUrl,
+          });
+        }
+        onClose(); // Close the modal
+      }
+    } catch (error: any) {
       console.error('Error opening IDE:', error);
       Alert.alert(
         'Error',
-        `Failed to open ${service}. Please try again or use another service.`
+        error.message || `Failed to open ${service}. Please try again or use another service.`
       );
     } finally {
       setIsOpening(false);

@@ -14,6 +14,7 @@ import { StreamingConsole, StreamMessage, FileTreeNode } from '../components/Str
 import { RunProjectModal } from '../components/RunProjectModal';
 import { WebPreview } from '../components/WebPreview';
 import { CodeViewer } from '../components/CodeViewer';
+import { LivePreviewPanel } from '../components/LivePreviewPanel';
 import { useEditor } from '../contexts/EditorContext';
 import { FileItem, TabItem } from '../types';
 import { FileSystemService } from '../services/FileSystemService';
@@ -62,6 +63,13 @@ export const EditorScreen: React.FC = () => {
   const [showWebPreview, setShowWebPreview] = useState(false);
   const [showCodeViewer, setShowCodeViewer] = useState(false);
   const [projectFiles, setProjectFiles] = useState<GeneratedFile[]>([]);
+
+  // Live Preview states (for CodeSandbox embed in WebView)
+  const [showLivePreview, setShowLivePreview] = useState(false);
+  const [livePreviewData, setLivePreviewData] = useState<{
+    sandboxId: string;
+    embedUrl: string;
+  } | null>(null);
 
   const { tabs, activeTabId, addTab, removeTab, updateTab, setActiveTab, getActiveTab, rootPath, currentRepository } =
     useEditor();
@@ -680,6 +688,10 @@ export const EditorScreen: React.FC = () => {
             git: false,
           }}
           onClose={() => setShowRunProject(false)}
+          onLivePreviewReady={(sandboxData) => {
+            setLivePreviewData(sandboxData);
+            setShowLivePreview(true);
+          }}
         />
       )}
 
@@ -698,6 +710,28 @@ export const EditorScreen: React.FC = () => {
           <CodeViewer
             files={projectFiles}
             onClose={() => setShowCodeViewer(false)}
+          />
+        </Modal>
+      )}
+
+      {/* Live Preview Panel - CodeSandbox embed in WebView */}
+      {showLivePreview && livePreviewData && currentRepository && (
+        <Modal visible={showLivePreview} animationType="slide">
+          <LivePreviewPanel
+            embedUrl={livePreviewData.embedUrl}
+            sandboxId={livePreviewData.sandboxId}
+            projectName={currentRepository.name}
+            onClose={() => {
+              setShowLivePreview(false);
+              setLivePreviewData(null);
+            }}
+            onRefresh={async () => {
+              // Reload all files and create new sandbox
+              const files = await loadProjectFiles();
+              setProjectFiles(files);
+              setShowRunProject(true); // Re-open RunProjectModal to create new sandbox
+              setShowLivePreview(false);
+            }}
           />
         </Modal>
       )}

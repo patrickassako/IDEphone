@@ -2,8 +2,8 @@
  * CodeSandbox Proxy API
  * Vercel Serverless Function
  *
- * This proxy receives files from the mobile app and forwards them
- * to CodeSandbox via POST request, then returns the sandbox URL.
+ * Creates a CodeSandbox and returns the EMBED URL for WebView preview
+ * This allows the mobile app to show the preview INSIDE the app, not in external browser
  *
  * Deploy: vercel deploy
  * Endpoint: https://your-app.vercel.app/api/codesandbox-proxy
@@ -32,6 +32,9 @@ export default async function handler(req, res) {
         error: 'Missing required fields: files and projectName'
       });
     }
+
+    console.log(`Creating CodeSandbox for project: ${projectName}`);
+    console.log(`Files count: ${files.length}`);
 
     // Format files for CodeSandbox
     const sandboxFiles = {};
@@ -100,6 +103,8 @@ export default async function handler(req, res) {
     formData.append('parameters', parametersBase64);
     formData.append('json', '1');
 
+    console.log('Sending request to CodeSandbox...');
+
     const response = await fetch(codesandboxUrl, {
       method: 'POST',
       headers: {
@@ -119,10 +124,20 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
-    // Return the sandbox URL
+    console.log('CodeSandbox created:', data.sandbox_id);
+
+    // Return multiple URLs for different use cases
     return res.status(200).json({
       success: true,
       sandboxId: data.sandbox_id,
+
+      // For WebView embed (INSIDE the app - this is what we want!)
+      embedUrl: `https://codesandbox.io/embed/${data.sandbox_id}?view=preview&hidenavigation=1&hidedevtools=1&codemirror=1`,
+
+      // For split view (code + preview)
+      embedSplitUrl: `https://codesandbox.io/embed/${data.sandbox_id}?view=split&hidenavigation=1`,
+
+      // For external browser (if needed)
       sandboxUrl: `https://codesandbox.io/s/${data.sandbox_id}`,
       editorUrl: `https://codesandbox.io/s/${data.sandbox_id}?file=/src/App.jsx`,
     });

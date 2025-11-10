@@ -421,10 +421,15 @@ export class StackBlitzService {
         }
 
         console.log('Sandbox created:', data.sandboxId);
-        console.log('Opening:', data.editorUrl);
+        console.log('Embed URL:', data.embedUrl);
 
-        // Open the CodeSandbox URL
-        await WebBrowser.openBrowserAsync(data.editorUrl);
+        // Return the embed URL for WebView display (instead of opening external browser)
+        return {
+          sandboxId: data.sandboxId,
+          embedUrl: data.embedUrl,
+          embedSplitUrl: data.embedSplitUrl,
+          sandboxUrl: data.sandboxUrl,
+        };
 
       } else {
         // StackBlitz: Opens a starter template (files not included)
