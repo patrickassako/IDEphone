@@ -7,6 +7,7 @@
 import { GeneratedFile } from '../ai/MultiFileGenerator';
 import { ProjectConfig } from '../../components/ProjectGeneratorModal';
 import { Linking } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 
 export interface StackBlitzProject {
   title: string;
@@ -19,23 +20,48 @@ export interface StackBlitzProject {
 export class StackBlitzService {
   /**
    * Base64 encode a string (React Native compatible)
-   * Uses custom implementation since btoa is not available in React Native
+   * Handles UTF-8 encoding properly for international characters
    */
   private static base64Encode(str: string): string {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
-    let output = '';
 
-    for (let i = 0; i < str.length; i += 3) {
-      const a = str.charCodeAt(i);
-      const b = i + 1 < str.length ? str.charCodeAt(i + 1) : 0;
-      const c = i + 2 < str.length ? str.charCodeAt(i + 2) : 0;
+    // Convert to UTF-8 bytes first
+    const utf8Bytes: number[] = [];
+    for (let i = 0; i < str.length; i++) {
+      let charCode = str.charCodeAt(i);
+      if (charCode < 0x80) {
+        utf8Bytes.push(charCode);
+      } else if (charCode < 0x800) {
+        utf8Bytes.push(0xc0 | (charCode >> 6));
+        utf8Bytes.push(0x80 | (charCode & 0x3f));
+      } else if (charCode < 0xd800 || charCode >= 0xe000) {
+        utf8Bytes.push(0xe0 | (charCode >> 12));
+        utf8Bytes.push(0x80 | ((charCode >> 6) & 0x3f));
+        utf8Bytes.push(0x80 | (charCode & 0x3f));
+      } else {
+        // Surrogate pair
+        i++;
+        charCode = 0x10000 + (((charCode & 0x3ff) << 10) | (str.charCodeAt(i) & 0x3ff));
+        utf8Bytes.push(0xf0 | (charCode >> 18));
+        utf8Bytes.push(0x80 | ((charCode >> 12) & 0x3f));
+        utf8Bytes.push(0x80 | ((charCode >> 6) & 0x3f));
+        utf8Bytes.push(0x80 | (charCode & 0x3f));
+      }
+    }
+
+    // Base64 encode the UTF-8 bytes
+    let output = '';
+    for (let i = 0; i < utf8Bytes.length; i += 3) {
+      const a = utf8Bytes[i];
+      const b = i + 1 < utf8Bytes.length ? utf8Bytes[i + 1] : 0;
+      const c = i + 2 < utf8Bytes.length ? utf8Bytes[i + 2] : 0;
 
       const bitmap = (a << 16) | (b << 8) | c;
 
       output += chars[(bitmap >> 18) & 63];
       output += chars[(bitmap >> 12) & 63];
-      output += i + 1 < str.length ? chars[(bitmap >> 6) & 63] : '=';
-      output += i + 2 < str.length ? chars[bitmap & 63] : '=';
+      output += i + 1 < utf8Bytes.length ? chars[(bitmap >> 6) & 63] : '=';
+      output += i + 2 < utf8Bytes.length ? chars[bitmap & 63] : '=';
     }
 
     return output;
@@ -158,8 +184,12 @@ export class StackBlitzService {
 
   /**
    * Create a CodeSandbox URL as alternative
-   * CodeSandbox also works well from mobile
    * Uses proper base64 encoding compatible with React Native
+   *
+   * IMPORTANT: CodeSandbox /define API requires:
+   * - Proper JSON structure with "files" object
+   * - Each file must have "content" and "isBinary" properties
+   * - Must include package.json with dependencies
    */
   static createCodeSandboxUrl(
     projectName: string,
@@ -167,13 +197,75 @@ export class StackBlitzService {
     config: ProjectConfig
   ): string {
     // Convert files to CodeSandbox format
-    const sandboxFiles: { [path: string]: { content: string } } = {};
+    const sandboxFiles: { [path: string]: { content: string; isBinary: boolean } } = {};
+
+    // Ensure we have a package.json
+    let hasPackageJson = false;
 
     files.forEach((file) => {
-      sandboxFiles[file.path] = { content: file.content };
+      sandboxFiles[file.path] = {
+        content: file.content,
+        isBinary: false
+      };
+      if (file.path === 'package.json') {
+        hasPackageJson = true;
+      }
     });
 
-    // Create sandbox parameters
+    // Add package.json if missing (required by CodeSandbox)
+    if (!hasPackageJson) {
+      const dependencies: { [key: string]: string } = {
+        react: '^18.2.0',
+        'react-dom': '^18.2.0',
+      };
+
+      if (config.framework === 'vite') {
+        dependencies['vite'] = '^5.0.0';
+        dependencies['@vitejs/plugin-react'] = '^4.2.0';
+      }
+
+      sandboxFiles['package.json'] = {
+        content: JSON.stringify({
+          name: projectName.toLowerCase().replace(/\s+/g, '-'),
+          version: '1.0.0',
+          description: config.description || 'Generated with IDEphone',
+          main: 'index.js',
+          scripts: {
+            start: 'react-scripts start',
+            build: 'react-scripts build',
+            dev: 'vite',
+          },
+          dependencies,
+          devDependencies: config.typescript ? {
+            '@types/react': '^18.2.0',
+            '@types/react-dom': '^18.2.0',
+            'typescript': '^5.0.0',
+          } : {},
+        }, null, 2),
+        isBinary: false,
+      };
+    }
+
+    // Add index.html if missing (required for web projects)
+    if (!sandboxFiles['index.html'] && !sandboxFiles['public/index.html']) {
+      sandboxFiles['index.html'] = {
+        content: `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${projectName}</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.${config.typescript ? 'tsx' : 'jsx'}"></script>
+  </body>
+</html>`,
+        isBinary: false,
+      };
+    }
+
+    // Create sandbox parameters following CodeSandbox API spec
     const parameters = {
       files: sandboxFiles,
     };
@@ -184,7 +276,67 @@ export class StackBlitzService {
     // URL encode for safe base64 encoding
     const parametersBase64 = this.base64Encode(parametersJson);
 
-    return `https://codesandbox.io/api/v1/sandboxes/define?parameters=${parametersBase64}`;
+    // Use POST method via query parameter
+    return `https://codesandbox.io/api/v1/sandboxes/define?parameters=${parametersBase64}&json=1`;
+  }
+
+  /**
+   * Create HTML page with auto-submit form for CodeSandbox POST
+   * This is a workaround since we can't do POST from React Native directly
+   */
+  private static createCodeSandboxFormHtml(parameters: string): string {
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Opening CodeSandbox...</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    .container {
+      text-align: center;
+    }
+    .spinner {
+      border: 4px solid rgba(255,255,255,0.3);
+      border-top: 4px solid white;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="spinner"></div>
+    <h2>Opening in CodeSandbox...</h2>
+    <p>Creating your sandbox with custom files</p>
+  </div>
+  <form id="codesandboxForm" action="https://codesandbox.io/api/v1/sandboxes/define" method="POST" style="display:none;">
+    <input type="hidden" name="parameters" value="${parameters}" />
+    <input type="hidden" name="json" value="1" />
+  </form>
+  <script>
+    // Auto-submit after short delay
+    setTimeout(() => {
+      document.getElementById('codesandboxForm').submit();
+    }, 500);
+  </script>
+</body>
+</html>`;
   }
 
   /**
@@ -203,19 +355,26 @@ export class StackBlitzService {
     service: 'stackblitz' | 'codesandbox' = 'codesandbox' // Changed default to codesandbox
   ): Promise<void> {
     try {
-      let url: string;
-
       if (service === 'codesandbox') {
         // CodeSandbox: Creates a real sandbox with your files
-        url = this.createCodeSandboxUrl(projectName, files, config);
+        // Since we can't POST from mobile, create an HTML page that does it
+        const parametersBase64 = this.createCodeSandboxUrl(projectName, files, config)
+          .split('parameters=')[1]
+          .split('&')[0];
+
+        const formHtml = this.createCodeSandboxFormHtml(parametersBase64);
+
+        // Create data URI
+        const dataUri = `data:text/html;base64,${this.base64Encode(formHtml)}`;
+
+        console.log('Opening CodeSandbox with custom files...');
+        await WebBrowser.openBrowserAsync(dataUri);
       } else {
         // StackBlitz: Opens a starter template (files not included)
         console.warn('⚠️ StackBlitz from mobile opens template only. Your custom files won\'t be included.');
-        url = this.createEmbedUrl(projectName, files, config);
+        const url = this.createEmbedUrl(projectName, files, config);
+        await Linking.openURL(url);
       }
-
-      console.log(`Opening project in ${service}...`);
-      await Linking.openURL(url);
     } catch (error) {
       console.error(`Error opening ${service}:`, error);
       throw error;
