@@ -367,9 +367,7 @@ export class StackBlitzService {
 
         // Save HTML to temporary file (expo-web-browser can't open data URIs)
         const tempFilePath = `${FileSystem.cacheDirectory}codesandbox-loader.html`;
-        await FileSystem.writeAsStringAsync(tempFilePath, formHtml, {
-          encoding: FileSystem.EncodingType.UTF8,
-        });
+        await FileSystem.writeAsStringAsync(tempFilePath, formHtml);
 
         console.log('Opening CodeSandbox with custom files...');
         console.log('Temp file:', tempFilePath);
