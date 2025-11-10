@@ -15,9 +15,12 @@ import {
   Modal,
   Dimensions,
   Animated,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PROJECT_TEMPLATES, ProjectTemplate as PresetTemplate } from '../data/projectTemplates';
+import { StackBlitzService } from '../services/integrations/StackBlitzService';
+import { GeneratedFile } from '../services/ai/MultiFileGenerator';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const MODAL_HEIGHT = SCREEN_HEIGHT * 0.95;
@@ -92,6 +95,337 @@ export const ProjectGeneratorModal: React.FC<ProjectGeneratorModalProps> = ({
       ...preset.config,
     };
     onGenerate(config);
+  };
+
+  const handlePreviewTemplate = async (preset: PresetTemplate) => {
+    try {
+      Alert.alert(
+        'Preview Template',
+        `Opening ${preset.name} in StackBlitz for live preview...`,
+        [{ text: 'OK' }]
+      );
+
+      // Generate basic files for preview
+      const files: GeneratedFile[] = [];
+
+      // package.json
+      files.push({
+        path: 'package.json',
+        content: JSON.stringify({
+          name: preset.name.toLowerCase().replace(/\s+/g, '-'),
+          version: '1.0.0',
+          description: preset.description,
+          scripts: {
+            dev: preset.config.framework === 'next' ? 'next dev' : 'vite',
+            build: preset.config.framework === 'next' ? 'next build' : 'vite build',
+          },
+          dependencies: {
+            react: '^18.2.0',
+            'react-dom': '^18.2.0',
+          },
+        }, null, 2),
+        language: 'json',
+        action: 'create',
+      });
+
+      // index.html (for Vite projects)
+      if (preset.config.framework === 'vite') {
+        files.push({
+          path: 'index.html',
+          content: `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${preset.name}</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.${preset.config.typescript ? 'tsx' : 'jsx'}"></script>
+  </body>
+</html>`,
+          language: 'html',
+          action: 'create',
+        });
+      }
+
+      // Main entry file
+      files.push({
+        path: `src/main.${preset.config.typescript ? 'tsx' : 'jsx'}`,
+        content: `import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './index.css';
+
+ReactDOM.createRoot(document.getElementById('root')${preset.config.typescript ? '!' : ''}).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);`,
+        language: preset.config.typescript ? 'typescript' : 'javascript',
+        action: 'create',
+      });
+
+      // App component with template-specific content
+      const appContent = getTemplatePreviewContent(preset);
+      files.push({
+        path: `src/App.${preset.config.typescript ? 'tsx' : 'jsx'}`,
+        content: appContent,
+        language: preset.config.typescript ? 'typescript' : 'javascript',
+        action: 'create',
+      });
+
+      // CSS with template-specific styles
+      files.push({
+        path: 'src/index.css',
+        content: getTemplateStyles(preset),
+        language: 'css',
+        action: 'create',
+      });
+
+      // Open in StackBlitz
+      await StackBlitzService.openInBrowserIDE(
+        preset.name,
+        files,
+        {
+          description: preset.prompt,
+          ...preset.config,
+        },
+        'stackblitz'
+      );
+    } catch (error) {
+      console.error('Error previewing template:', error);
+      Alert.alert('Error', 'Failed to open template preview');
+    }
+  };
+
+  const getTemplatePreviewContent = (preset: PresetTemplate): string => {
+    const tsImport = preset.config.typescript ? "import React from 'react';\n\n" : '';
+
+    switch (preset.id) {
+      case 'portfolio':
+        return `${tsImport}function App() {
+  return (
+    <div className="app">
+      <header className="hero">
+        <h1>Your Name</h1>
+        <p className="subtitle">Full Stack Developer</p>
+      </header>
+      <section className="about">
+        <h2>About Me</h2>
+        <p>Passionate developer creating amazing web experiences.</p>
+      </section>
+      <section className="projects">
+        <h2>Projects</h2>
+        <div className="project-grid">
+          <div className="project-card">
+            <h3>Project 1</h3>
+            <p>Amazing project description</p>
+          </div>
+          <div className="project-card">
+            <h3>Project 2</h3>
+            <p>Another cool project</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+export default App;`;
+
+      case 'saas-landing':
+        return `${tsImport}function App() {
+  return (
+    <div className="app">
+      <nav className="navbar">
+        <h1>SaaS Product</h1>
+        <button className="cta-button">Get Started</button>
+      </nav>
+      <section className="hero">
+        <h1>Revolutionary SaaS Solution</h1>
+        <p>Transform your business with our powerful platform</p>
+        <button className="cta-button-large">Start Free Trial</button>
+      </section>
+      <section className="features">
+        <h2>Features</h2>
+        <div className="feature-grid">
+          <div className="feature">⚡ Fast</div>
+          <div className="feature">🔒 Secure</div>
+          <div className="feature">📊 Analytics</div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+export default App;`;
+
+      case 'todo':
+        return `${tsImport}function App() {
+  const [todos, setTodos] = React.useState(['Learn React', 'Build awesome apps']);
+
+  return (
+    <div className="app">
+      <h1>📝 Todo App</h1>
+      <div className="todo-container">
+        <input placeholder="Add new todo..." className="todo-input" />
+        <ul className="todo-list">
+          {todos.map((todo, i) => (
+            <li key={i} className="todo-item">{todo}</li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+export default App;`;
+
+      default:
+        return `${tsImport}function App() {
+  return (
+    <div className="app">
+      <h1>${preset.name}</h1>
+      <p>${preset.description}</p>
+      <p>This is a preview of the ${preset.name} template.</p>
+    </div>
+  );
+}
+
+export default App;`;
+    }
+  };
+
+  const getTemplateStyles = (preset: PresetTemplate): string => {
+    return `* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: linear-gradient(135deg, ${preset.color}20 0%, ${preset.color}10 100%);
+  color: #1a1a1a;
+  min-height: 100vh;
+}
+
+.app {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+h1 {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, ${preset.color} 0%, ${preset.color}80 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+h2 {
+  font-size: 2rem;
+  margin: 2rem 0 1rem;
+  color: ${preset.color};
+}
+
+.hero {
+  text-align: center;
+  padding: 4rem 2rem;
+}
+
+.subtitle {
+  font-size: 1.5rem;
+  color: #666;
+}
+
+.project-grid, .feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.project-card, .feature {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  transition: transform 0.3s;
+}
+
+.project-card:hover, .feature:hover {
+  transform: translateY(-5px);
+}
+
+.cta-button, .cta-button-large {
+  background: ${preset.color};
+  color: white;
+  border: none;
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.cta-button-large {
+  padding: 1rem 3rem;
+  font-size: 1.2rem;
+  margin-top: 1rem;
+}
+
+.cta-button:hover, .cta-button-large:hover {
+  opacity: 0.9;
+  transform: scale(1.05);
+}
+
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background: white;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.todo-container {
+  max-width: 500px;
+  margin: 2rem auto;
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.todo-input {
+  width: 100%;
+  padding: 1rem;
+  border: 2px solid #eee;
+  border-radius: 8px;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+}
+
+.todo-list {
+  list-style: none;
+}
+
+.todo-item {
+  padding: 1rem;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.todo-item:hover {
+  background: #f5f5f5;
+}`;
   };
 
   const handleGenerate = () => {
@@ -262,6 +596,17 @@ export const ProjectGeneratorModal: React.FC<ProjectGeneratorModalProps> = ({
                             </View>
                           )}
                         </View>
+
+                        {/* Preview Button */}
+                        <TouchableOpacity
+                          style={[styles.previewButton, { borderColor: template.color }]}
+                          onPress={() => handlePreviewTemplate(template)}
+                        >
+                          <Ionicons name="eye-outline" size={18} color={template.color} />
+                          <Text style={[styles.previewButtonText, { color: template.color }]}>
+                            Preview Live
+                          </Text>
+                        </TouchableOpacity>
 
                         {/* Action Buttons */}
                         <View style={styles.presetActions}>
@@ -782,6 +1127,22 @@ const styles = StyleSheet.create({
     color: '#2EAADC',
     fontSize: 12,
     fontWeight: '600',
+  },
+  previewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    borderWidth: 2,
+    gap: 8,
+    marginBottom: 12,
+  },
+  previewButtonText: {
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   presetActions: {
     flexDirection: 'row',
