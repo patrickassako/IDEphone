@@ -344,7 +344,7 @@ export class StackBlitzService {
    * Open project in browser-based IDE
    *
    * IMPORTANT:
-   * - CodeSandbox: Uploads your custom files ✅ (Recommended)
+   * - CodeSandbox: Uploads your custom files ✅ (Recommended) - Uses backend proxy
    * - StackBlitz: Opens template only, custom files NOT included ⚠️
    *
    * For full code preview with your generated files, use CodeSandbox
@@ -353,27 +353,45 @@ export class StackBlitzService {
     projectName: string,
     files: GeneratedFile[],
     config: ProjectConfig,
-    service: 'stackblitz' | 'codesandbox' = 'codesandbox' // Changed default to codesandbox
+    service: 'stackblitz' | 'codesandbox' = 'codesandbox'
   ): Promise<void> {
     try {
       if (service === 'codesandbox') {
-        // CodeSandbox: Creates a real sandbox with your files
-        // Since we can't POST from mobile, create an HTML page that does it
-        const parametersBase64 = this.createCodeSandboxUrl(projectName, files, config)
-          .split('parameters=')[1]
-          .split('&')[0];
+        // CodeSandbox: Use backend proxy to handle POST request
+        console.log('Sending files to backend proxy...');
 
-        const formHtml = this.createCodeSandboxFormHtml(parametersBase64);
+        // Get proxy URL from environment variable
+        // Set this in your .env file: EXPO_PUBLIC_CODESANDBOX_PROXY_URL
+        const PROXY_URL = process.env.EXPO_PUBLIC_CODESANDBOX_PROXY_URL ||
+          'https://idephone.vercel.app/api/codesandbox-proxy';
 
-        // Save HTML to temporary file (expo-web-browser can't open data URIs)
-        const tempFilePath = `${FileSystemLegacy.cacheDirectory}codesandbox-loader.html`;
-        await FileSystemLegacy.writeAsStringAsync(tempFilePath, formHtml);
+        console.log('Using proxy URL:', PROXY_URL);
 
-        console.log('Opening CodeSandbox with custom files...');
-        console.log('Temp file:', tempFilePath);
+        const response = await fetch(PROXY_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            files,
+            projectName,
+            config,
+          }),
+        });
 
-        // Open the local HTML file in browser
-        await WebBrowser.openBrowserAsync(tempFilePath);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(`Proxy error: ${errorData.error || 'Unknown error'}`);
+        }
+
+        const data = await response.json();
+
+        console.log('Sandbox created:', data.sandboxId);
+        console.log('Opening:', data.editorUrl);
+
+        // Open the CodeSandbox URL
+        await WebBrowser.openBrowserAsync(data.editorUrl);
+
       } else {
         // StackBlitz: Opens a starter template (files not included)
         console.warn('⚠️ StackBlitz from mobile opens template only. Your custom files won\'t be included.');
