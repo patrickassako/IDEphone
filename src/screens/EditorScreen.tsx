@@ -15,6 +15,8 @@ import { RunProjectModal } from '../components/RunProjectModal';
 import { WebPreview } from '../components/WebPreview';
 import { CodeViewer } from '../components/CodeViewer';
 import { LivePreviewPanel } from '../components/LivePreviewPanel';
+import { VercelPreviewPanel } from '../components/VercelPreviewPanel';
+import { VercelDeploymentService } from '../services/integrations/VercelDeploymentService';
 import { useEditor } from '../contexts/EditorContext';
 import { FileItem, TabItem } from '../types';
 import { FileSystemService } from '../services/FileSystemService';
@@ -70,6 +72,15 @@ export const EditorScreen: React.FC = () => {
     sandboxId: string;
     embedUrl: string;
   } | null>(null);
+
+  // Vercel Deployment states (for permanent URLs like Lovable.dev)
+  const [showVercelPreview, setShowVercelPreview] = useState(false);
+  const [vercelDeploymentData, setVercelDeploymentData] = useState<{
+    deploymentId: string;
+    url: string;
+    status: 'BUILDING' | 'READY' | 'ERROR' | 'CANCELED';
+  } | null>(null);
+  const [isDeploying, setIsDeploying] = useState(false);
 
   const { tabs, activeTabId, addTab, removeTab, updateTab, setActiveTab, getActiveTab, rootPath, currentRepository } =
     useEditor();
@@ -354,6 +365,58 @@ export const EditorScreen: React.FC = () => {
     setShowRunProject(true);
   };
 
+  // Deploy project to Vercel (like Lovable.dev)
+  const handleDeployToVercel = async () => {
+    if (!currentRepository) {
+      alert('No project open');
+      return;
+    }
+
+    try {
+      setIsDeploying(true);
+
+      // Load all project files
+      const files = await loadProjectFiles();
+      if (files.length === 0) {
+        alert('No files found in project');
+        return;
+      }
+
+      console.log(`Deploying ${currentRepository.name} to Vercel...`);
+
+      // Deploy to Vercel
+      const deployment = await VercelDeploymentService.deployProject(
+        currentRepository.name,
+        files,
+        {
+          description: `Generated with IDEphone`,
+          template: 'react',
+          framework: 'vite',
+          styling: 'tailwind',
+          typescript: true,
+          tests: false,
+          git: false,
+        },
+        vercelDeploymentData?.deploymentId // For updates
+      );
+
+      console.log('Deployment successful!', deployment);
+
+      // Show preview panel
+      setVercelDeploymentData({
+        deploymentId: deployment.deploymentId,
+        url: deployment.url,
+        status: deployment.status,
+      });
+      setShowVercelPreview(true);
+    } catch (error: any) {
+      console.error('Deployment error:', error);
+      alert(`Deployment failed: ${error.message}`);
+    } finally {
+      setIsDeploying(false);
+    }
+  };
+
   const handleGenerateProject = async (config: ProjectConfig) => {
     // Reset states
     setStreamMessages([]);
@@ -542,6 +605,22 @@ export const EditorScreen: React.FC = () => {
             >
               <Ionicons name="play-circle" size={20} color="#0F7B6C" />
               <Text style={[styles.toolbarButtonText, styles.testButtonText]}>Test Live</Text>
+            </TouchableOpacity>
+
+            {/* Deploy & Test Button - Permanent URL like Lovable.dev */}
+            <TouchableOpacity
+              style={[styles.toolbarButton, styles.deployButton]}
+              onPress={handleDeployToVercel}
+              disabled={isDeploying}
+            >
+              <Ionicons
+                name={isDeploying ? 'cloud-upload-outline' : 'cloud-done'}
+                size={20}
+                color="#FF6B35"
+              />
+              <Text style={[styles.toolbarButtonText, styles.deployButtonText]}>
+                {isDeploying ? 'Deploying...' : 'Deploy & Test'}
+              </Text>
             </TouchableOpacity>
           </>
         )}
@@ -735,6 +814,26 @@ export const EditorScreen: React.FC = () => {
           />
         </Modal>
       )}
+
+      {/* Vercel Preview Panel - Deployed project with permanent URL */}
+      {showVercelPreview && vercelDeploymentData && currentRepository && (
+        <Modal visible={showVercelPreview} animationType="slide">
+          <VercelPreviewPanel
+            deploymentUrl={vercelDeploymentData.url}
+            deploymentId={vercelDeploymentData.deploymentId}
+            projectName={currentRepository.name}
+            status={vercelDeploymentData.status}
+            onClose={() => {
+              setShowVercelPreview(false);
+              // Keep deployment data to allow updates
+            }}
+            onRedeploy={async () => {
+              // Redeploy with latest changes
+              await handleDeployToVercel();
+            }}
+          />
+        </Modal>
+      )}
     </View>
   );
 };
@@ -800,6 +899,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#0F7B6C',
   },
   testButtonText: {
+    color: '#FFF',
+  },
+  deployButton: {
+    borderColor: '#FF6B35',
+    backgroundColor: '#FF6B35',
+  },
+  deployButtonText: {
     color: '#FFF',
   },
   streamingContainer: {
