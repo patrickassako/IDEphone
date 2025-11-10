@@ -379,12 +379,46 @@ export class StackBlitzService {
           }),
         });
 
+        // Handle non-OK responses
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(`Proxy error: ${errorData.error || 'Unknown error'}`);
+          const contentType = response.headers.get('content-type');
+          let errorMessage = `Backend error (${response.status})`;
+
+          if (contentType?.includes('application/json')) {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorMessage;
+          } else {
+            // HTML or text response (probably 404/502)
+            const textResponse = await response.text();
+            console.error('Backend response:', textResponse);
+
+            if (response.status === 404) {
+              throw new Error(
+                'Backend not deployed yet!\n\n' +
+                'Please deploy the Vercel backend first:\n' +
+                '1. cd /home/user/IDEphone\n' +
+                '2. vercel deploy --prod\n' +
+                '3. Update .env with the URL\n\n' +
+                'See DEPLOY_BACKEND.md for details.'
+              );
+            }
+          }
+
+          throw new Error(errorMessage);
         }
 
-        const data = await response.json();
+        // Try to parse JSON response
+        let data;
+        try {
+          data = await response.json();
+        } catch (parseError) {
+          const textResponse = await response.text();
+          console.error('Failed to parse response:', textResponse);
+          throw new Error(
+            'Backend returned invalid JSON. It may not be deployed correctly.\n\n' +
+            'See DEPLOY_BACKEND.md for deployment instructions.'
+          );
+        }
 
         console.log('Sandbox created:', data.sandboxId);
         console.log('Opening:', data.editorUrl);
