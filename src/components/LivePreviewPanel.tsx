@@ -4,7 +4,7 @@
  * Like Lovable.dev - user stays in the app, no external browser
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -13,8 +13,10 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
+import * as ScreenOrientation from 'expo-screen-orientation';
 
 interface LivePreviewPanelProps {
   embedUrl: string;
@@ -35,6 +37,17 @@ export const LivePreviewPanel: React.FC<LivePreviewPanelProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [canGoBack, setCanGoBack] = useState(false);
   const [canGoForward, setCanGoForward] = useState(false);
+
+  // Enable orientation changes for preview
+  useEffect(() => {
+    // Unlock orientation when preview opens
+    ScreenOrientation.unlockAsync();
+
+    // Restore orientation lock when closing
+    return () => {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+    };
+  }, []);
 
   const handleRefresh = () => {
     webViewRef.current?.reload();
@@ -74,7 +87,7 @@ export const LivePreviewPanel: React.FC<LivePreviewPanelProps> = ({
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Toolbar */}
       <View style={styles.toolbar}>
         {/* Close Button */}
@@ -163,7 +176,7 @@ export const LivePreviewPanel: React.FC<LivePreviewPanelProps> = ({
           Make changes in the editor, then refresh to see updates
         </Text>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 

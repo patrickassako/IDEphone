@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -42,34 +43,66 @@ export const WebPreview: React.FC<WebPreviewProps> = ({
       setIsLoading(true);
       setError('');
 
-      // Try to find index.html
-      const indexPath = `${projectPath}/index.html`;
-      const indexExists = await FileSystem.getInfoAsync(indexPath);
+      // Try to find index.html in common locations
+      const possiblePaths = [
+        `${projectPath}/index.html`,
+        `${projectPath}/public/index.html`,
+        `${projectPath}/src/index.html`,
+        `${projectPath}/dist/index.html`,
+        `${projectPath}/build/index.html`,
+      ];
 
-      if (indexExists.exists) {
-        const content = await FileSystem.readAsStringAsync(indexPath);
+      let foundPath: string | null = null;
+      for (const path of possiblePaths) {
+        const info = await FileSystem.getInfoAsync(path);
+        if (info.exists) {
+          foundPath = path;
+          console.log(`Found index.html at: ${path}`);
+          break;
+        }
+      }
 
-        // Load CSS files
-        const cssPath = `${projectPath}/src/index.css`;
-        const cssExists = await FileSystem.getInfoAsync(cssPath);
+      if (foundPath) {
+        const content = await FileSystem.readAsStringAsync(foundPath);
+
+        // Try to load CSS files from various locations
+        const cssPaths = [
+          `${projectPath}/style.css`,
+          `${projectPath}/styles.css`,
+          `${projectPath}/src/index.css`,
+          `${projectPath}/src/style.css`,
+          `${projectPath}/src/styles.css`,
+          `${projectPath}/public/style.css`,
+        ];
+
         let cssContent = '';
-
-        if (cssExists.exists) {
-          cssContent = await FileSystem.readAsStringAsync(cssPath);
+        for (const cssPath of cssPaths) {
+          const cssExists = await FileSystem.getInfoAsync(cssPath);
+          if (cssExists.exists) {
+            cssContent = await FileSystem.readAsStringAsync(cssPath);
+            console.log(`Found CSS at: ${cssPath}`);
+            break;
+          }
         }
 
-        // Inject CSS into HTML
+        // Inject CSS into HTML if found
         let modifiedHtml = content;
         if (cssContent) {
-          modifiedHtml = content.replace(
-            '</head>',
-            `<style>${cssContent}</style></head>`
-          );
+          if (content.includes('</head>')) {
+            modifiedHtml = content.replace(
+              '</head>',
+              `<style>${cssContent}</style></head>`
+            );
+          } else {
+            // No head tag, inject at beginning
+            modifiedHtml = `<style>${cssContent}</style>${content}`;
+          }
         }
 
         setHtmlContent(modifiedHtml);
       } else {
-        // Generate a basic preview
+        // No HTML file found - generate a preview notice
+        console.warn('No index.html found in project');
         setHtmlContent(`
           <!DOCTYPE html>
           <html>
@@ -117,9 +150,12 @@ export const WebPreview: React.FC<WebPreviewProps> = ({
             </head>
             <body>
               <div class="container">
-                <h1>🚀 ${projectName}</h1>
-                <p>Project preview will be available after build</p>
-                <div class="badge">Created with IDEphone</div>
+                <h1>📱 ${projectName}</h1>
+                <p>No HTML preview available</p>
+                <p style="font-size: 0.9rem; opacity: 0.8; margin-top: 10px;">
+                  This project doesn't have an index.html file in the root, public, src, dist, or build folders.
+                </p>
+                <div class="badge">Use "Test Live" or "Deploy & Test" for full preview</div>
               </div>
             </body>
           </html>
@@ -127,9 +163,10 @@ export const WebPreview: React.FC<WebPreviewProps> = ({
       }
 
       setIsLoading(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error loading preview:', err);
-      setError('Failed to load project preview');
+      const errorMsg = err?.message || 'Unknown error';
+      setError(`Failed to load preview: ${errorMsg}`);
       setIsLoading(false);
     }
   };
@@ -140,7 +177,7 @@ export const WebPreview: React.FC<WebPreviewProps> = ({
 
   return (
     <Modal visible={true} animationType="slide">
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
@@ -195,7 +232,7 @@ export const WebPreview: React.FC<WebPreviewProps> = ({
             Preview shows static HTML. Run dev server for full functionality.
           </Text>
         </View>
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 };

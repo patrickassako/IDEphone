@@ -367,17 +367,31 @@ export class StackBlitzService {
 
         console.log('Using proxy URL:', PROXY_URL);
 
-        const response = await fetch(PROXY_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            files,
-            projectName,
-            config,
-          }),
-        });
+        let response;
+        try {
+          response = await fetch(PROXY_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              files,
+              projectName,
+              config,
+            }),
+          });
+        } catch (networkError: any) {
+          console.error('Network error:', networkError);
+          throw new Error(
+            'Network connection failed!\n\n' +
+            'Could not reach the backend server. Possible causes:\n' +
+            '1. No internet connection\n' +
+            '2. Backend URL is incorrect in .env\n' +
+            '3. Firewall blocking the request\n\n' +
+            `Trying to reach: ${PROXY_URL}\n\n` +
+            'Check your .env file and internet connection.'
+          );
+        }
 
         // Handle non-OK responses
         if (!response.ok) {
@@ -387,6 +401,16 @@ export class StackBlitzService {
           if (contentType?.includes('application/json')) {
             const errorData = await response.json();
             errorMessage = errorData.error || errorMessage;
+
+            // If CodeSandbox API returned an error, show it
+            if (errorData.details) {
+              console.error('CodeSandbox API error:', errorData.details);
+              throw new Error(
+                `CodeSandbox Error: ${errorMessage}\n\n` +
+                'The backend is working but CodeSandbox rejected the request. ' +
+                'This may be due to invalid project files or API limits.'
+              );
+            }
           } else {
             // HTML or text response (probably 404/502)
             const textResponse = await response.text();
@@ -394,12 +418,20 @@ export class StackBlitzService {
 
             if (response.status === 404) {
               throw new Error(
-                'Backend not deployed yet!\n\n' +
-                'Please deploy the Vercel backend first:\n' +
-                '1. cd /home/user/IDEphone\n' +
-                '2. vercel deploy --prod\n' +
-                '3. Update .env with the URL\n\n' +
-                'See DEPLOY_BACKEND.md for details.'
+                'CodeSandbox backend endpoint not found!\n\n' +
+                'Possible causes:\n' +
+                '1. Backend not deployed yet\n' +
+                '2. Wrong URL in .env file\n' +
+                '3. Endpoint path incorrect\n\n' +
+                `Current URL: ${PROXY_URL}\n\n` +
+                'See DEPLOY_BACKEND.md for setup instructions.'
+              );
+            } else if (response.status >= 500) {
+              throw new Error(
+                'Backend server error!\n\n' +
+                'The backend is deployed but encountered an error. ' +
+                'Check Vercel logs: vercel logs\n\n' +
+                'This could be due to missing VERCEL_TOKEN or other configuration issues.'
               );
             }
           }

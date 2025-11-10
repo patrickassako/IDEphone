@@ -37,18 +37,32 @@ export class VercelDeploymentService {
       console.log('Using deployment API:', DEPLOYMENT_API_URL);
 
       // Send deployment request
-      const response = await fetch(DEPLOYMENT_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          files,
-          projectName,
-          deploymentId: existingDeploymentId, // For updates
-          config,
-        }),
-      });
+      let response;
+      try {
+        response = await fetch(DEPLOYMENT_API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            files,
+            projectName,
+            deploymentId: existingDeploymentId, // For updates
+            config,
+          }),
+        });
+      } catch (networkError: any) {
+        console.error('Network error:', networkError);
+        throw new Error(
+          'Network connection failed!\n\n' +
+          'Could not reach the deployment backend. Possible causes:\n' +
+          '1. No internet connection\n' +
+          '2. Backend URL is incorrect in .env\n' +
+          '3. Firewall blocking the request\n\n' +
+          `Trying to reach: ${DEPLOYMENT_API_URL}\n\n` +
+          'Check your .env file and internet connection.'
+        );
+      }
 
       if (!response.ok) {
         const contentType = response.headers.get('content-type');
@@ -67,12 +81,28 @@ export class VercelDeploymentService {
 
           if (response.status === 404) {
             throw new Error(
-              'Deployment backend not found!\n\n' +
-                'Please deploy the Vercel backend first:\n' +
-                '1. vercel deploy --prod\n' +
-                '2. Add VERCEL_TOKEN to environment variables\n' +
-                '3. Update .env with deployment URL\n\n' +
-                'See DEPLOY_BACKEND.md for details.'
+              'Vercel deployment endpoint not found!\n\n' +
+                'Possible causes:\n' +
+                '1. Backend not deployed yet\n' +
+                '2. Wrong URL in .env file\n' +
+                '3. API endpoint path incorrect\n\n' +
+                `Current URL: ${DEPLOYMENT_API_URL}\n\n` +
+                'To fix:\n' +
+                '1. Deploy backend: vercel deploy --prod\n' +
+                '2. Add VERCEL_TOKEN to Vercel project settings\n' +
+                '3. Update .env with correct URL\n\n' +
+                'See DEPLOY_BACKEND.md for full instructions.'
+            );
+          } else if (response.status >= 500) {
+            throw new Error(
+              'Backend server error!\n\n' +
+                'The backend is deployed but encountered an error. ' +
+                'This is usually caused by:\n' +
+                '1. Missing VERCEL_TOKEN environment variable\n' +
+                '2. Invalid Vercel token\n' +
+                '3. Vercel API limits reached\n\n' +
+                'Check Vercel logs: vercel logs\n' +
+                'Check environment variables in Vercel dashboard.'
             );
           }
         }
