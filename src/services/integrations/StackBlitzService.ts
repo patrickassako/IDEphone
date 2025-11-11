@@ -367,13 +367,25 @@ export class StackBlitzService {
 
         console.log('Using proxy URL:', PROXY_URL);
 
+        // Get bypass token for Vercel Deployment Protection
+        const bypassToken = process.env.EXPO_PUBLIC_VERCEL_BYPASS_TOKEN;
+
+        // Prepare headers
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+
+        // Add bypass token if available (for accounts without Pro)
+        if (bypassToken) {
+          headers['x-vercel-protection-bypass'] = bypassToken;
+          console.log('✅ Using Vercel bypass token for authentication');
+        }
+
         let response;
         try {
           response = await fetch(PROXY_URL, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            headers,
             body: JSON.stringify({
               files,
               projectName,
@@ -412,11 +424,23 @@ export class StackBlitzService {
               );
             }
           } else {
-            // HTML or text response (probably 404/502)
+            // HTML or text response (probably 401/404/502)
             const textResponse = await response.text();
             console.error('Backend response:', textResponse);
 
-            if (response.status === 404) {
+            if (response.status === 401) {
+              throw new Error(
+                '🔒 Vercel Authentication Required!\n\n' +
+                  'Your Vercel project has Deployment Protection enabled.\n\n' +
+                  '✅ Solution:\n' +
+                  '1. Go to: Vercel Dashboard → Your Project → Settings → Deployment Protection\n' +
+                  '2. Scroll to "Protection Bypass for Automation"\n' +
+                  '3. Click "Generate Token" and copy it\n' +
+                  '4. Add to .env: EXPO_PUBLIC_VERCEL_BYPASS_TOKEN=your_token_here\n' +
+                  '5. Restart the app (npm start)\n\n' +
+                  'See TROUBLESHOOTING.md for detailed instructions.'
+              );
+            } else if (response.status === 404) {
               throw new Error(
                 'CodeSandbox backend endpoint not found!\n\n' +
                 'Possible causes:\n' +
