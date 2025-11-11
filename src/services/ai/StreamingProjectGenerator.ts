@@ -483,24 +483,41 @@ CRITICAL RULES - PROJECT MUST BUILD WITHOUT ERRORS:
    - If you create src/App.${typescript ? 'tsx' : 'jsx'}, you can import it
    - DO NOT import './utils/animations' unless you create src/utils/animations.${typescript ? 'ts' : 'js'}
    - DO NOT import './components/contact' unless you create that file
+   - If you import './index.css', you MUST create src/index.css
 
-6. **Required files:**
+6. **Required files (YOU MUST CREATE ALL OF THESE):**
    - index.html (root level)
    - package.json (with ALL deps)
    - vite.config.${typescript ? 'ts' : 'js'}
    ${typescript ? '- tsconfig.json (with jsx: "react-jsx")' : ''}
    - src/main.${typescript ? 'tsx' : 'jsx'} (entry point)
    - src/App.${typescript ? 'tsx' : 'jsx'} (main component)
-   - src/index.css (styles)
+   - **src/index.css (REQUIRED - do not skip this file!)**
    ${git ? '- .gitignore' : ''}
 
-7. **DO NOT:**
+7. **Example src/index.css (you MUST include this):**
+   \`\`\`css:src/index.css
+   * {
+     margin: 0;
+     padding: 0;
+     box-sizing: border-box;
+   }
+
+   body {
+     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+     background: #0f0f0f;
+     color: #fff;
+   }
+   \`\`\`
+
+8. **DO NOT:**
    - Write explanations outside file blocks
    - Import non-existent files
    - Forget React imports in components
    - Forget to export components
+   - Skip the src/index.css file
 
-START GENERATING THE PROJECT NOW (minimum 6-10 files):`;
+START GENERATING THE PROJECT NOW (minimum 7-10 files, MUST include src/index.css):`;
 
     return prompt;
   }
