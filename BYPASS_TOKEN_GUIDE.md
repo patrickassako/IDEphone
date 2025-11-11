@@ -12,7 +12,7 @@ Sans compte Pro, vous ne pouvez pas la désactiver. **Mais vous pouvez utiliser 
 ### Étape 1 : Obtenir le Bypass Token
 
 1. Allez sur https://vercel.com/dashboard
-2. Cliquez sur votre projet : **`idephone-3ywrb3cqg-patricks-projects-ce18ee33`**
+2. Cliquez sur votre projet : **`idephone`** (le plus récent déployé)
 3. Cliquez sur **Settings** (dans le menu de gauche)
 4. Scrollez jusqu'à **Deployment Protection**
 5. Vous verrez une section **"Protection Bypass for Automation"**
@@ -29,8 +29,8 @@ Ouvrez le fichier `.env` à la racine du projet IDEphone et ajoutez le token :
 
 ```env
 # Backend Proxy Configuration
-EXPO_PUBLIC_CODESANDBOX_PROXY_URL=https://idephone-3ywrb3cqg-patricks-projects-ce18ee33.vercel.app/api/codesandbox-proxy
-EXPO_PUBLIC_VERCEL_DEPLOYMENT_URL=https://idephone-3ywrb3cqg-patricks-projects-ce18ee33.vercel.app/api/deploy-to-vercel
+EXPO_PUBLIC_CODESANDBOX_PROXY_URL=https://idephone-j603gaotl-patricks-projects-ce18ee33.vercel.app/api/codesandbox-proxy
+EXPO_PUBLIC_VERCEL_DEPLOYMENT_URL=https://idephone-j603gaotl-patricks-projects-ce18ee33.vercel.app/api/deploy-to-vercel
 
 # Collez votre bypass token ici ⬇️
 EXPO_PUBLIC_VERCEL_BYPASS_TOKEN=AbCdEf123456VotreTokenIci
@@ -72,7 +72,7 @@ ERROR Deployment failed (401)
 
 ```
 Vercel Dashboard
-  └── Your Project (idephone-3ywrb3cqg...)
+  └── Your Project (idephone)
       └── Settings
           └── Deployment Protection
               └── Protection Bypass for Automation  ← ICI !
