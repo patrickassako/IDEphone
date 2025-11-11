@@ -448,6 +448,23 @@ CRITICAL RULES - PROJECT MUST BUILD WITHOUT ERRORS:
    }
    \`\`\``}
 
+2b. **index.html MUST have correct Vite script tag:**
+   \`\`\`html:index.html
+   <!DOCTYPE html>
+   <html lang="en">
+     <head>
+       <meta charset="UTF-8" />
+       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+       <title>My Project</title>
+     </head>
+     <body>
+       <div id="root"></div>
+       <script type="module" src="/src/main.${typescript ? 'tsx' : 'jsx'}"></script>
+     </body>
+   </html>
+   \`\`\`
+   CRITICAL: The script src MUST be "/src/main.${typescript ? 'tsx' : 'jsx'}" (with leading slash)
+
 3. ${typescript ? `**tsconfig.json MUST have jsx configured:**
    \`\`\`json:tsconfig.json
    {
