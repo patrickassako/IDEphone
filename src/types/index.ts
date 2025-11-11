@@ -35,3 +35,38 @@ export interface Repository {
   path: string;
   url?: string;
 }
+
+export interface ProjectDeployment {
+  projectPath: string;
+  deploymentId: string;
+  url: string;
+  status: 'BUILDING' | 'READY' | 'ERROR' | 'CANCELED' | 'QUEUED';
+  buildUrl?: string;
+  inspectorUrl?: string;
+  deployedAt: number;
+  lastChecked?: number;
+}
+
+export interface ProjectMetadata {
+  name: string;
+  path: string;
+  createdAt: number;
+  updatedAt: number;
+  deployment?: ProjectDeployment;
+  framework?: string;
+  language?: string;
+}
+
+export interface BuildLog {
+  timestamp: number;
+  message: string;
+  type: 'info' | 'error' | 'warning' | 'success';
+}
+
+export interface ProjectValidationError {
+  file: string;
+  line?: number;
+  message: string;
+  severity: 'error' | 'warning';
+  suggestedFix?: string;
+}
