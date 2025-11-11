@@ -386,7 +386,7 @@ export class StreamingProjectGenerator {
   private buildPrompt(config: ProjectConfig): string {
     const { description, template, framework, styling, typescript, tests, git } = config;
 
-    let prompt = `You are a professional project generator. Create a COMPLETE, WORKING ${template} project.
+    let prompt = `You are a professional project generator. Create a COMPLETE, BUILDABLE ${template} project that will deploy successfully to Vercel.
 
 PROJECT REQUIREMENTS:
 Description: ${description}
@@ -399,42 +399,108 @@ TECHNICAL STACK:
 - Tests: ${tests ? 'YES (include test files)' : 'NO'}
 - Git: ${git ? 'YES (include .gitignore)' : 'NO'}
 
-CRITICAL FORMATTING RULES - YOU MUST FOLLOW THIS EXACTLY:
+CRITICAL RULES - PROJECT MUST BUILD WITHOUT ERRORS:
 
-1. Format EVERY file using this EXACT syntax:
+1. **Format EVERY file using this EXACT syntax:**
    \`\`\`language:path/to/file.ext
    file content here
    \`\`\`
 
-2. EXAMPLE of correct format:
-   \`\`\`json:package.json
+2. **package.json MUST include ALL required dependencies:**
+   ${typescript ? `\`\`\`json:package.json
    {
-     "name": "my-app",
-     "version": "1.0.0"
+     "name": "my-project",
+     "version": "1.0.0",
+     "scripts": {
+       "dev": "vite",
+       "build": "tsc && vite build",
+       "preview": "vite preview"
+     },
+     "dependencies": {
+       "react": "^18.2.0",
+       "react-dom": "^18.2.0"
+     },
+     "devDependencies": {
+       "@types/react": "^18.2.0",
+       "@types/react-dom": "^18.2.0",
+       "@vitejs/plugin-react": "^4.2.0",
+       "typescript": "^5.0.0",
+       "vite": "^5.0.0"
+     }
    }
+   \`\`\`` : `\`\`\`json:package.json
+   {
+     "name": "my-project",
+     "version": "1.0.0",
+     "scripts": {
+       "dev": "vite",
+       "build": "vite build",
+       "preview": "vite preview"
+     },
+     "dependencies": {
+       "react": "^18.2.0",
+       "react-dom": "^18.2.0"
+     },
+     "devDependencies": {
+       "@vitejs/plugin-react": "^4.2.0",
+       "vite": "^5.0.0"
+     }
+   }
+   \`\`\``}
+
+3. ${typescript ? `**tsconfig.json MUST have jsx configured:**
+   \`\`\`json:tsconfig.json
+   {
+     "compilerOptions": {
+       "target": "ES2020",
+       "useDefineForClassFields": true,
+       "lib": ["ES2020", "DOM", "DOM.Iterable"],
+       "module": "ESNext",
+       "skipLibCheck": true,
+       "moduleResolution": "bundler",
+       "allowImportingTsExtensions": true,
+       "resolveJsonModule": true,
+       "isolatedModules": true,
+       "noEmit": true,
+       "jsx": "react-jsx",
+       "strict": true
+     },
+     "include": ["src"]
+   }
+   \`\`\`` : ''}
+
+4. **vite.config.${typescript ? 'ts' : 'js'} is REQUIRED:**
+   \`\`\`${typescript ? 'typescript' : 'javascript'}:vite.config.${typescript ? 'ts' : 'js'}
+   import { defineConfig } from 'vite'
+   import react from '@vitejs/plugin-react'
+
+   export default defineConfig({
+     plugins: [react()],
+   })
    \`\`\`
 
-   \`\`\`${typescript ? 'typescript' : 'javascript'}:src/App.${typescript ? 'tsx' : 'jsx'}
-   import React from 'react';
-   export default function App() {
-     return <div>Hello</div>;
-   }
-   \`\`\`
+5. **ONLY import files that you actually create**
+   - If you create src/App.${typescript ? 'tsx' : 'jsx'}, you can import it
+   - DO NOT import './utils/animations' unless you create src/utils/animations.${typescript ? 'ts' : 'js'}
+   - DO NOT import './components/contact' unless you create that file
 
-3. You MUST create AT LEAST these files:
-   - package.json (with correct dependencies for ${framework})
-   - README.md (with setup instructions)
-   - Main entry file (index.html or similar)
-   - At least 2-3 component/source files
-   - ${styling === 'tailwind' ? 'Tailwind config file' : 'CSS/style files'}
-   ${git ? '- .gitignore file' : ''}
-   ${tests ? '- At least 1 test file' : ''}
+6. **Required files:**
+   - index.html (root level)
+   - package.json (with ALL deps)
+   - vite.config.${typescript ? 'ts' : 'js'}
+   ${typescript ? '- tsconfig.json (with jsx: "react-jsx")' : ''}
+   - src/main.${typescript ? 'tsx' : 'jsx'} (entry point)
+   - src/App.${typescript ? 'tsx' : 'jsx'} (main component)
+   - src/index.css (styles)
+   ${git ? '- .gitignore' : ''}
 
-4. DO NOT write explanations or descriptions outside of file blocks
-5. Each file MUST have the proper file extension (.tsx, .jsx, .json, .css, etc.)
-6. Include ALL necessary imports and dependencies
+7. **DO NOT:**
+   - Write explanations outside file blocks
+   - Import non-existent files
+   - Forget React imports in components
+   - Forget to export components
 
-START GENERATING THE PROJECT NOW (minimum 5-8 files):`;
+START GENERATING THE PROJECT NOW (minimum 6-10 files):`;
 
     return prompt;
   }
