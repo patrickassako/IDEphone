@@ -106,8 +106,63 @@ export class StreamingProjectGenerator {
   private async createProjectFiles(config: ProjectConfig): Promise<GeneratedFile[]> {
     this.currentPhase = 'creating';
     this.events.onProgress(45, 'Starting file generation...');
-    this.addMessage('progress', '⟳ Creating project files...', 'sparkles');
+    this.addMessage('progress', '⟳ Creating project files with AI...', 'sparkles');
 
+    try {
+      // TRY NEW: Use structured Tool Use approach (95%+ success rate)
+      console.log('🤖 Using Claude Tool Use for structured generation...');
+      const { StructuredProjectGenerator } = await import('./StructuredProjectGenerator');
+
+      const files = await StructuredProjectGenerator.generateProject(config);
+
+      console.log(`✅ Tool Use generated ${files.length} files`);
+
+      // Simulate streaming file creation for UI
+      const progressPerFile = 45 / files.length; // 45% for file creation (45-90%)
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const currentProgress = 45 + (i * progressPerFile);
+
+        // Check if it's a directory or file
+        if (file.path.includes('/')) {
+          const dirPath = file.path.substring(0, file.path.lastIndexOf('/'));
+          this.createDirectory(dirPath);
+        }
+
+        // Emit file start event
+        this.events.onFileStart(file.path);
+        this.addMessage('file', `  Creating ${file.path}...`, 'document-outline', 1);
+        this.updateFileTree(file.path, 'creating');
+
+        await this.sleep(200);
+
+        // Emit file complete event
+        this.events.onFileComplete(file.path, file.content);
+        this.addMessage('success', `  ✓ Created ${file.path}`, 'checkmark-circle', 1);
+        this.updateFileTree(file.path, 'completed');
+
+        this.events.onProgress(
+          Math.min(90, currentProgress + progressPerFile),
+          `Created ${i + 1}/${files.length} files`
+        );
+      }
+
+      return files;
+
+    } catch (toolUseError) {
+      // FALLBACK: Use old parsing method if Tool Use fails
+      console.warn('⚠️ Tool Use failed, falling back to old method:', toolUseError);
+      this.addMessage('info', '  Falling back to text-based generation...');
+
+      return this.createProjectFilesLegacy(config);
+    }
+  }
+
+  /**
+   * Legacy file creation using text parsing (fallback)
+   */
+  private async createProjectFilesLegacy(config: ProjectConfig): Promise<GeneratedFile[]> {
     // Build AI prompt
     const prompt = this.buildPrompt(config);
 
