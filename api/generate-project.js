@@ -30,12 +30,14 @@ module.exports = async function handler(req, res) {
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
+      console.error('❌ ANTHROPIC_API_KEY not found in environment');
       return res.status(500).json({
         error: 'ANTHROPIC_API_KEY not configured',
       });
     }
 
-    console.log(`Generating project: ${config.description}`);
+    console.log(`✅ API Key found: ${apiKey.substring(0, 12)}...`);
+    console.log(`📝 Generating project: ${config.description}`);
 
     const anthropic = new Anthropic({ apiKey });
 
@@ -121,10 +123,25 @@ module.exports = async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Generation error:', error);
-    return res.status(500).json({
+    console.error('❌ Generation error:', error);
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      status: error.status,
+      type: error.type,
+    });
+
+    // If it's an Anthropic API error, preserve the status code
+    const statusCode = error.status || 500;
+
+    return res.status(statusCode).json({
       error: 'Project generation failed',
       message: error.message,
+      details: {
+        status: error.status,
+        type: error.type,
+        apiKeyPresent: !!process.env.ANTHROPIC_API_KEY,
+      },
     });
   }
 };
