@@ -130,10 +130,29 @@ module.exports = async function handler(req, res) {
 };
 
 /**
+ * Generate short project name from description
+ */
+function generateProjectName(description) {
+  // Extract key words from description (max 3 words)
+  const words = description
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '') // Remove special chars
+    .split(/\s+/)
+    .filter(word => word.length > 2) // Skip short words like "a", "an", "the"
+    .slice(0, 3); // Take first 3 meaningful words
+
+  // Join with hyphens
+  const name = words.join('-') || 'my-app';
+
+  return name;
+}
+
+/**
  * Build system prompt
  */
 function buildSystemPrompt(config) {
   const ts = config.typescript;
+  const projectName = generateProjectName(config.description);
 
   return `You are an expert full-stack developer creating production-ready projects.
 
@@ -147,7 +166,7 @@ CRITICAL REQUIREMENTS:
 
 2. **package.json** - Complete dependencies
    {
-     "name": "project",
+     "name": "${projectName}",
      "version": "1.0.0",
      "scripts": {
        "dev": "vite",

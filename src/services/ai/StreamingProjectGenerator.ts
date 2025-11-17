@@ -241,11 +241,20 @@ export class StreamingProjectGenerator {
     // Mock files based on template
     const mockFiles: GeneratedFile[] = [];
 
+    // Generate short project name
+    const projectName = config.description
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '') // Remove special chars
+      .split(/\s+/)
+      .filter(word => word.length > 2) // Skip short words
+      .slice(0, 3) // Max 3 words
+      .join('-') || 'my-app';
+
     // Always add package.json
     mockFiles.push({
       path: 'package.json',
       content: JSON.stringify({
-        name: config.description.split(' ').slice(0, 3).join('-').toLowerCase() || 'my-app',
+        name: projectName,
         version: '1.0.0',
         description: config.description,
         scripts: {
